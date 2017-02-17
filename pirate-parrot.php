@@ -109,7 +109,7 @@ class TI_parrot {
 			.wrap h2{ font-size: 40px;font-weight: 600;padding: 9px 15px 4px 0px;line-height: 29px; color: #FFF; text-shadow: 1px 2px 0px #5DA9BE;; background: url("'. plugin_dir_url( __FILE__ ) .'logo.png") no-repeat 0px 0px; padding: 25px 85px; }
 			#submit {background: #FF7F66 none repeat scroll 0% 0%;padding: 0px 15px;font-size: 16px;text-shadow: none;color: #FFF;border-radius: 3px;margin: 0px;border: medium none;box-shadow: 0px 3px 0px #CB6956;}
 			#contour {background: #FFF none repeat scroll 0% 0%;border-left: 4px solid #7FA1AB;box-shadow: 0px 2px 1px 0px rgba(0, 0, 0, 0.1);margin: 10px 0px 20px; padding: 10px 12px; color: #595959;}
-			.parrot-info {padding: 10px; display: inline-block; font-size: 18px; font-style: italic; margin-top: 10px;border: 1px solid #7C9DA8;border-radius: 3px; background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0%;}
+			.parrot-info {width:500px;height:200px;padding: 10px; display: inline-block; font-size: 18px; font-style: italic; margin-top: 10px;border: 1px solid #7C9DA8;border-radius: 3px; background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0% !important;}
 
 			</style>
 
@@ -174,15 +174,20 @@ All you have to do is to click on the button below for a new token. Then, give i
 			$output = sprintf(
 				'<p style="font-size: 15px;">%1$s</p>',
 				sprintf(
-					 'Parrot info: <br/><code class="parrot-info">%1$s</code>' ,
-					esc_html( $this->_options['token'] )
+					 'Parrot info: <br/><textarea class="parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Admin: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea>' ,
+					esc_html( $this->_options['token'] ),
+					get_admin_url(),
+					get_bloginfo( 'version' ),
+					phpversion(),
+					get_locale(),
+					wp_get_theme()
 				)
 			);
 
 			$output .= sprintf(
 				'<p><small>%1$s</small></p>',
 				( ! is_wp_error( $expiration_date = $this->get_expiration_date() )
-					?  'This parrot will leave on '  . esc_html( $expiration_date )
+					?  'This parrol will leave on '  . esc_html( $expiration_date )
 					: $expiration_date->get_error_message()
 				)
 			);
