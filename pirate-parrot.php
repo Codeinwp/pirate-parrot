@@ -187,7 +187,7 @@ All you have to do is to click on the button below for a new token. Then, give i
 			$output .= sprintf(
 				'<p><small>%1$s</small></p>',
 				( ! is_wp_error( $expiration_date = $this->get_expiration_date() )
-					?  'This parrol will leave on '  . esc_html( $expiration_date )
+					?  'This parrot will leave on '  . esc_html( $expiration_date )
 					: $expiration_date->get_error_message()
 				)
 			);
