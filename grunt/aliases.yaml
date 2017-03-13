@@ -1,4 +1,5 @@
 
 'travis':
+  - 'mkdir:logs'
   - 'phplint'
   - 'phpcs'

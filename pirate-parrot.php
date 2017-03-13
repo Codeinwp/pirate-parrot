@@ -57,12 +57,12 @@ class TI_Parrot {
 		if ( $support_account_data ) {
 			$support_account_id = $support_account_data->ID;
 			if ( ! wp_delete_user( $support_account_id ) ) {
-				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !' ) );
+				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !','pirate-parrot' ) );
 			}
 			delete_option( $this->_option_name );
 			$this->clear_sleep_bird();
 		} else {
-			return new WP_Error( 'get_user_data', __( 'Cannot find parrot. Try to recall him.' ) );
+			return new WP_Error( 'get_user_data', __( 'Cannot find parrot. Try to recall him.','pirate-parrot' ) );
 		}
 		// update options variable
 		$this->get_options();
