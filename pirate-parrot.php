@@ -4,7 +4,7 @@
  * Plugin Name: Pirate Parrot
  * Plugin URI: http://themeisle.com
  * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their wordpress instances in order for the developers to help solve their issues.
- * Version: 1.0
+ * Version: 1.1
  * Author: Themeisle
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
