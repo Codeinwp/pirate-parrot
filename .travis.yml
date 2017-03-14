@@ -33,3 +33,5 @@ deploy:
   bucket: "downloads.themeisle.com"
   skip_cleanup: true
   acl: public_read
+  on:
+      branch: production
