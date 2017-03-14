@@ -26,7 +26,6 @@ before_deploy:
       - THEMEISLE_REPO=$(node -pe "require('./package.json').name")
       - THEMEISLE_VERSION=$(node -pe "require('./package.json').version")
       - grunt deploy
-      - echo $THEMEISLE_REPO
 script:
     - >
       if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
@@ -40,7 +39,7 @@ deploy:
   skip_cleanup: true
   acl: public_read
   overwrite: true
-  upload-dir: $THEMEISLE_REPO"/"$THEMEISLE_VERSION
+  upload-dir: $THEMEISLE_REPO/$THEMEISLE_VERSION
   local-dir: "release/"
   on:
       branch: production
