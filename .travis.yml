@@ -36,5 +36,7 @@ deploy:
   bucket: "downloads.themeisle.com"
   skip_cleanup: true
   acl: public_read
+  upload-dir: "$THEMEISLE_REPO"
+  local-dir: "release/"
   on:
       branch: production
