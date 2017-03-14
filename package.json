@@ -1,27 +1,29 @@
 {
-    "name": "pirate-parrot",
-    "version": "1.1.0",
-    "description": "Pirate Parrot",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Codeinwp/pirate-parrot.git"
-    },
-    "keywords": [
-        "wordpress-plugin"
-    ],
-    "textdomain": "pirate-parrot",
-    "author": "ThemeIsle <friends@themeisle.com>",
-    "license": "GPL-2.0+",
-    "bugs": {
-        "url": "https://github.com/Codeinwp/visualizer/issues"
-    },
-    "pot": {
-        "reportmsgidbugsto": "https://github.com/Codeinwp/pirate-parrot/issues",
-        "languageteam": "Themeisle Translate <friends@themeisle.com>",
-        "lasttranslator": "Themeisle Translate Team <friends@themeisle.com>"
-    },
-    "devDependencies": {
-        "grunt-plugin-fleet": "codeinwp/grunt-plugin-fleet",
-        "load-project-config": "~0.2.0"
-    }
+  "name": "pirate-parrot",
+  "version": "1.2.0",
+  "description": "Pirate Parrot",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Codeinwp/pirate-parrot.git"
+  },
+  "keywords": [
+    "wordpress-plugin"
+  ],
+  "textdomain": "pirate-parrot",
+  "author": "ThemeIsle <friends@themeisle.com>",
+  "license": "GPL-2.0+",
+  "bugs": {
+    "url": "https://github.com/Codeinwp/visualizer/issues"
+  },
+  "pot": {
+    "reportmsgidbugsto": "https://github.com/Codeinwp/pirate-parrot/issues",
+    "languageteam": "Themeisle Translate <friends@themeisle.com>",
+    "lasttranslator": "Themeisle Translate Team <friends@themeisle.com>"
+  },
+  "devDependencies": {
+    "grunt-contrib-compress": "^1.4.1",
+    "grunt-plugin-fleet": "codeinwp/grunt-plugin-fleet",
+    "grunt-zip": "^0.17.1",
+    "load-project-config": "~0.2.0"
+  }
 }
