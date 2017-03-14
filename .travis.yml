@@ -23,7 +23,6 @@ install:
 before_script:
     - phpenv rehash
 before_deploy:
-      grunt shell
       grunt deploy
 script:
     - >
