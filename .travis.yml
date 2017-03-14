@@ -32,14 +32,25 @@ script:
         grunt travis
       fi;
 deploy:
-  provider: s3
-  access_key_id: "$AWS_ACCESS_KEY"
-  secret_access_key: "$AWS_SECRET_KEY"
-  bucket: "downloads.themeisle.com"
-  skip_cleanup: true
-  acl: public_read
-  overwrite: true
-  upload-dir: $THEMEISLE_REPO/$THEMEISLE_VERSION
-  local-dir: "release/"
-  on:
-      branch: production
+  - provider: s3
+    access_key_id: "$AWS_ACCESS_KEY"
+    secret_access_key: "$AWS_SECRET_KEY"
+    bucket: "downloads.themeisle.com"
+    skip_cleanup: true
+    acl: public_read
+    overwrite: true
+    upload-dir: $THEMEISLE_REPO/latest
+    local-dir: "release/"
+    on:
+        branch: production
+  - provider: s3
+    access_key_id: "$AWS_ACCESS_KEY"
+    secret_access_key: "$AWS_SECRET_KEY"
+    bucket: "downloads.themeisle.com"
+    skip_cleanup: true
+    acl: public_read
+    overwrite: true
+    upload-dir: $THEMEISLE_REPO/$THEMEISLE_VERSION
+    local-dir: "release/"
+    on:
+        branch: production
