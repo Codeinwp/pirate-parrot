@@ -1,0 +1,9 @@
+.gitignore
+.disignore
+.travis.yaml
+Gruntfile.js
+package.json
+phpcs.xml
+logs
+grunt
+node_modules
