@@ -35,10 +35,7 @@ before_deploy:
       grunt deploy
     fi
 script:
-   - |
-    if [ "${TRAVIS_PULL_REQUEST}" = "true" ]; then
-      grunt travis
-    fi
+    - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; grunt travis fi'
 deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY"
