@@ -23,6 +23,7 @@
   "devDependencies": {
     "grunt-contrib-compress": "^1.4.1",
     "grunt-plugin-fleet": "codeinwp/grunt-plugin-fleet",
+    "grunt-shell": "^2.1.0",
     "grunt-zip": "^0.17.1",
     "load-project-config": "~0.2.0"
   }
