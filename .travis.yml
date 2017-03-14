@@ -23,6 +23,8 @@ install:
 before_script:
     - phpenv rehash
 before_deploy:
+      - THEMEISLE_REPO=$(node -pe "require('./package.json').name")
+      - THEMEISLE_VERSION=$(node -pe "require('./package.json').version")
       - grunt deploy
       - echo $THEMEISLE_REPO
 script:
