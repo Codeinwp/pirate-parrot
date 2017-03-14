@@ -24,6 +24,7 @@ before_script:
     - phpenv rehash
 before_deploy:
       grunt deploy
+      echo $THEMEISLE_REPO
 script:
     - >
       if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
