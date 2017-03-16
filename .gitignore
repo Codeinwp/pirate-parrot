@@ -2,3 +2,5 @@
 node_modules
 logs
 pirate-parrot.zip
+dist
+artifact
