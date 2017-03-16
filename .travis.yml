@@ -39,7 +39,7 @@ deploy:
     skip_cleanup: true
     acl: public_read
     overwrite: true
-    upload-dir: $THEMEISLE_REPO/latest
+    upload-dir: "utils"/$THEMEISLE_REPO/latest
     local-dir: "artifact/"
     on:
         branch: production
@@ -50,7 +50,7 @@ deploy:
     skip_cleanup: true
     acl: public_read
     overwrite: true
-    upload-dir: $THEMEISLE_REPO/$THEMEISLE_VERSION
+    upload-dir: "utils"/$THEMEISLE_REPO/$THEMEISLE_VERSION
     local-dir: "artifact/"
     on:
         branch: production
