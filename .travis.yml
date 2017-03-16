@@ -40,7 +40,7 @@ deploy:
     acl: public_read
     overwrite: true
     upload-dir: $THEMEISLE_REPO/latest
-    local-dir: "release/"
+    local-dir: "artifact/"
     on:
         branch: production
   - provider: s3
