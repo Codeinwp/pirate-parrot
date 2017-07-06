@@ -1,0 +1,85 @@
+#pp-log-console .pp-log {
+	overflow: hidden;
+}
+
+#pp-log-console .pp-log .pp-log-type {
+	font-weight: bold;
+}
+
+#pp-log-actions input {
+	margin-left: 10px;
+}
+
+#pp-log-actions label[for="pp-log-info"] {
+	background: #52aae2;
+}
+
+#pp-log-actions label[for="pp-log-error"] {
+	background: #f16848;
+}
+
+#pp-log-actions label[for="pp-log-all"] {
+	background: #3c3c3c;
+}
+
+.pp-log-info {
+	background: #52c4ef;
+}
+
+#pp-log-actions label[for="pp-log-warn"] {
+	background: #ffbd01;
+}
+
+#pp-log-actions label[for="pp-log-debug"] {
+	color: #444;
+	background: #f0f0f0;
+}
+
+#pp-log-actions {
+	padding: 5px;
+	line-height: 29px;
+}
+
+#pp-logs .pp-log.pp-log-warn {
+	color: #9c7300;
+	background: #ffd764;
+}
+
+#pp-logs .pp-log.pp-log-error {
+	color: #ad2c0d;
+	background: #ffad99;
+}
+
+#pp-logs .pp-log-timestamp {
+	font-style: italic;
+}
+
+#pp-logs .pp-log.pp-log-info {
+	background: #52c4ef;
+}
+
+#pp-logs .pp-log.pp-log-debug {
+	color: #444;
+	background: #f0f0f0;
+}
+
+#pp-logs .pp-log {
+	margin-top: 2px;
+	padding: 3px 6px;
+	border-radius: 3px;
+	color: #fff;
+}
+
+#pp-logs label {
+	padding: 0 10px;
+	padding-bottom: 2px;
+	border-radius: 4px;
+	color: #fff;
+	vertical-align: baseline;
+}
+
+#pp-logs {
+	width: 95%;
+	margin: auto;
+	margin-top: 10px;
+}
