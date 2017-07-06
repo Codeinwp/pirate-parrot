@@ -2,9 +2,9 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Pirate Parrot 1.0\n"
+"Project-Id-Version: Pirate Parrot 1.2.0\n"
 "Report-Msgid-Bugs-To: https://github.com/Codeinwp/pirate-parrot/issues\n"
-"POT-Creation-Date: 2017-03-13 17:58:12+00:00\n"
+"POT-Creation-Date: 2017-07-05 17:06:52+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -24,11 +24,39 @@ msgstr ""
 "X-Poedit-Bookmarks: \n"
 "X-Textdomain-Support: yes\n"
 
-#: pirate-parrot.php:60
+#: inc/logging.php:1
+msgid "Select plugins to log"
+msgstr ""
+
+#: inc/logging.php:13
+msgid "Save"
+msgstr ""
+
+#: inc/logging.php:21
+msgid "Select plugin to view log"
+msgstr ""
+
+#: inc/logging.php:34
+msgid "Refresh"
+msgstr ""
+
+#: inc/logging.php:41
+msgid "Download"
+msgstr ""
+
+#: inc/logging.php:46
+msgid "All"
+msgstr ""
+
+#: inc/logging.php:67
+msgid "No logs found"
+msgstr ""
+
+#: pirate-parrot.php:187
 msgid "Parrot has left the cage !"
 msgstr ""
 
-#: pirate-parrot.php:65
+#: pirate-parrot.php:192
 msgid "Cannot find parrot. Try to recall him."
 msgstr ""
 

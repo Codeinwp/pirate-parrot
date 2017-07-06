@@ -9,12 +9,22 @@
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
  */
-
+// @codingStandardsIgnoreStart
 class TI_Parrot {
+    // @codingStandardsIgnoreEnd
 	private $_username = 'ti_parrot';
 	private $_options = array();
 	private $_option_name = 'ti_parrot_options';
 	private $_availability = ' +5 days';
+
+	static $_log_types  = array( 'error', 'warn', 'info', 'debug' );
+
+	// make this true to mimic parrot user functionality
+	const MIMIC_PARROT_USER = true;
+
+	const LOG_OPTION_EXPIRY_MINS = 5;
+
+	const LOG_LENGTH = 100;
 
 	function __construct() {
 		$this->get_options();
@@ -22,6 +32,123 @@ class TI_Parrot {
 		register_deactivation_hook( __FILE__, array( $this, 'delete_account' ) );
 		add_action( 'ti_kill_parrot', array( $this, 'sleep_bird' ) );
 
+		if ( $this->is_user_parrot() ) {
+			add_action( 'ti_log_event', array( $this, 'log_event' ), 10, 5 );
+			add_action( 'ti_log_register', array( $this, 'log_register' ), 10, 1 );
+			add_action( 'wp_ajax_parrot', array( $this, 'ajax' ) );
+		}
+	}
+
+	function get_version() {
+		$version    = '';
+		$plugin_data    = get_plugin_data( __FILE__ );
+		if ( $plugin_data ) {
+			$version    = $plugin_data['Version'];
+		}
+		return $version;
+	}
+
+	function ajax() {
+		check_ajax_referer( 'parrot', 'nonce' );
+
+		switch ( $_POST['_action'] ) {
+			case 'download_logs':
+				$logs   = get_transient( 'ti_log' . $_POST['plugin_name'] );
+				if ( $logs ) {
+					$logs   = array_reverse( $logs );
+					$rows   = array();
+					foreach ( $logs as $log ) {
+						$rows[] = $log['time'] . ': (' . ucwords( $log['type'] ) . ') - ' . basename( $log['file'] ) . ':' . $log['line'] . ' - ' . $log['msg'];
+					}
+
+					echo wp_send_json_success( array(
+						'csv'  => implode( PHP_EOL, $rows ),
+						'name' => 'themeisle_logs_' . $_POST['plugin_name'] . '_' . date( 'F_j_Y_H_i_s', current_time( 'timestamp', true ) ) . '.txt',
+					) );
+
+				}
+				break;
+		}
+
+	}
+
+	function load_js_and_css() {
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+	}
+
+	function admin_enqueue_scripts() {
+		$url    = trailingslashit( plugins_url( '', __FILE__ ) );
+		wp_enqueue_script( 'pirate-parrot', $url . 'inc/js/parrot.js', array( 'jquery' ), $this->get_version() );
+		wp_localize_script( 'pirate-parrot', 'pp', array(
+			'nonce' => wp_create_nonce( 'parrot' ),
+		) );
+
+		wp_register_style( 'pirate-parrot', $url . 'inc/css/parrot.css', array(), $this->get_version() );
+		wp_enqueue_style( 'pirate-parrot' );
+	}
+
+	function log_register( $plugin_name ) {
+		$registered = get_transient( 'ti_log_registered' );
+		if ( ! $registered ) {
+			$registered = array();
+		}
+		if ( ! in_array( $plugin_name, $registered ) ) {
+			$registered[]   = $plugin_name;
+		}
+		set_transient( 'ti_log_registered', $registered );
+	}
+
+	function log_event( $plugin_name, $log_msg, $log_type, $file, $line ) {
+		// first check if this plugin has registered?
+		$allowed    = get_transient( 'ti_log_allowed' );
+		if ( is_array( $allowed ) && in_array( $plugin_name, $allowed ) ) {
+			$logs       = get_transient( 'ti_log' . $plugin_name );
+			if ( ! $logs ) {
+				$logs   = array();
+			}
+			$logs[]     = array(
+				'type' => $log_type,
+				'msg' => $log_msg,
+				'time' => date( 'F j, Y H:i:s', current_time( 'timestamp', true ) ),
+				'file' => $file,
+				'line' => $line,
+			);
+			// keep only the last LOG_LENGTH logs
+			$logs       = array_slice( $logs, 0 - self::LOG_LENGTH );
+			set_transient( 'ti_log' . $plugin_name, $logs, self::LOG_OPTION_EXPIRY_MINS * MINUTE_IN_SECONDS );
+		}
+	}
+
+	function handle_logging() {
+		// show this only to the parrot user
+		if ( ! $this->is_user_parrot() ) {
+			return;
+		}
+
+		if ( isset( $_POST['pp-allow-plugins'] ) && wp_verify_nonce( $_POST['nonce'], 'pp-allow' ) ) {
+			set_transient( 'ti_log_allowed', isset( $_POST['allow_plugin'] ) ? $_POST['allow_plugin'] : array() );
+		}
+
+		$logs       = null;
+		if ( isset( $_POST['pp_plugin_name'] ) && wp_verify_nonce( $_POST['nonce'], 'pp-view' ) ) {
+			$logs   = get_transient( 'ti_log' . $_POST['pp_plugin_name'] );
+		} else {
+			// show the first one by default
+			$allowed    = get_transient( 'ti_log_allowed' );
+			if ( count( $allowed ) > 0 ) {
+				$logs   = get_transient( 'ti_log' . $allowed[0] );
+			}
+		}
+
+		$registered = get_transient( 'ti_log_registered' );
+		$allowed    = get_transient( 'ti_log_allowed' );
+		if ( $registered ) {
+			include_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/logging.php';
+		}
+	}
+
+	function get_log_types() {
+		return self::$_log_types;
 	}
 
 	function get_options() {
@@ -75,10 +202,22 @@ class TI_Parrot {
 	}
 
 	function register_settings_page() {
-		add_submenu_page( 'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
+		$submenu    = add_submenu_page( 'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
 			$this,
 			'ti_parrot_cage',
 		) );
+
+		if ( $this->is_user_parrot() ) {
+			add_action( 'load-' . $submenu, array( $this, 'load_js_and_css' ) );
+		}
+	}
+
+	function is_user_parrot() {
+		if ( self::MIMIC_PARROT_USER ) {
+			return true;
+		}
+		$current_user = wp_get_current_user();
+		return $current_user->user_login === $this->_username;
 	}
 
 	function ti_parrot_cage() {
@@ -127,10 +266,10 @@ class TI_Parrot {
 			.parrot-info {width:500px;height:200px;padding: 10px; display: inline-block; font-size: 18px; font-style: italic; margin-top: 10px;border: 1px solid #7C9DA8;border-radius: 3px; background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0% !important;}
 
 			</style>
-			<script type="text/javascript"> 
+			<script type="text/javascript">
 			window.onload = function(){
-				document.querySelector("#ti-parrot-copy").onclick = function() { 
-				 
+				document.querySelector("#ti-parrot-copy").onclick = function() {
+
 				  document.querySelector("#ti-parrot-info").select();
 				  document.execCommand(\'copy\');
 				  return false;
@@ -163,6 +302,8 @@ All you have to do is to click on the button below for a new token. Then, give i
 			$this->get_parrot_info(),
 			$this->get_status_message( $message )
 		);
+
+		$this->handle_logging();
 	}
 
 	function generate_new_parrot( $regenerate_account = false ) {
