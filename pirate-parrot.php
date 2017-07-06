@@ -32,6 +32,10 @@ class TI_Parrot {
 		register_deactivation_hook( __FILE__, array( $this, 'delete_account' ) );
 		add_action( 'ti_kill_parrot', array( $this, 'sleep_bird' ) );
 
+		add_action( 'init', array( $this, 'init' ) );
+	}
+
+	function init() {
 		if ( $this->is_user_parrot() ) {
 			add_action( 'ti_log_event', array( $this, 'log_event' ), 10, 5 );
 			add_action( 'ti_log_register', array( $this, 'log_register' ), 10, 1 );
