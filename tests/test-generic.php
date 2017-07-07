@@ -15,9 +15,9 @@ class Test_Generic extends WP_Ajax_UnitTestCase {
 	/**
 	 * Test runtime
 	 *
-	 * @access private
+	 * @access public
 	 */
-	private function test_runtime() {
+	public function test_runtime() {
 		$this->assertTrue( true );
 	}
 }
