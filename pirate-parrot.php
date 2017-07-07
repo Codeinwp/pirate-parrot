@@ -37,8 +37,8 @@ class TI_Parrot {
 
 	function init() {
 		if ( $this->is_user_parrot() ) {
-			add_action( 'ti_log_event', array( $this, 'log_event' ), 10, 5 );
-			add_action( 'ti_log_register', array( $this, 'log_register' ), 10, 1 );
+			$this->log_register( apply_filters( 'pirate_parrot_log', array() ) );
+			add_action( 'themeisle_log_event', array( $this, 'log_event' ), 10, 5 );
 			add_action( 'wp_ajax_parrot', array( $this, 'ajax' ) );
 		}
 	}
@@ -91,13 +91,17 @@ class TI_Parrot {
 		wp_enqueue_style( 'pirate-parrot' );
 	}
 
-	function log_register( $plugin_name ) {
+	function log_register( $plugins ) {
 		$registered = get_transient( 'ti_log_registered' );
 		if ( ! $registered ) {
 			$registered = array();
 		}
-		if ( ! in_array( $plugin_name, $registered ) ) {
-			$registered[]   = $plugin_name;
+		if ( $plugins ) {
+			foreach ( $plugins as $plugin_name ) {
+				if ( ! in_array( $plugin_name, $registered ) ) {
+					$registered[]   = $plugin_name;
+				}
+			}
 		}
 		set_transient( 'ti_log_registered', $registered );
 	}
