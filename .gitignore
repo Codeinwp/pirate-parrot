@@ -1,6 +1,8 @@
 .idea
 node_modules
 logs
-pirate-parrot.zip
 dist
 artifact
+vendor
+bin
+composer.lock
