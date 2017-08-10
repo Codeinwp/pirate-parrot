@@ -3,7 +3,7 @@
 /*
  * Plugin Name: Pirate Parrot
  * Plugin URI: http://themeisle.com
- * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their wordpress instances in order for the developers to help solve their issues.
+ * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their WordPress instances in order for the developers to help solve their issues.
  * Version: 1.3.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
@@ -65,10 +65,12 @@ class TI_Parrot {
 						$rows[] = $log['time'] . ': (' . ucwords( $log['type'] ) . ') - ' . basename( $log['file'] ) . ':' . $log['line'] . ' - ' . $log['msg'];
 					}
 
-					echo wp_send_json_success( array(
-						'csv'  => implode( PHP_EOL, $rows ),
-						'name' => 'themeisle_logs_' . $_POST['plugin_name'] . '_' . date( 'F_j_Y_H_i_s', current_time( 'timestamp', true ) ) . '.txt',
-					) );
+					echo wp_send_json_success(
+						array(
+							'csv'  => implode( PHP_EOL, $rows ),
+							'name' => 'themeisle_logs_' . $_POST['plugin_name'] . '_' . date( 'F_j_Y_H_i_s', current_time( 'timestamp', true ) ) . '.txt',
+						)
+					);
 
 				}
 				break;
@@ -83,9 +85,11 @@ class TI_Parrot {
 	function admin_enqueue_scripts() {
 		$url    = trailingslashit( plugins_url( '', __FILE__ ) );
 		wp_enqueue_script( 'pirate-parrot', $url . 'inc/js/parrot.js', array( 'jquery' ), $this->get_version() );
-		wp_localize_script( 'pirate-parrot', 'pp', array(
-			'nonce' => wp_create_nonce( 'parrot' ),
-		) );
+		wp_localize_script(
+			'pirate-parrot', 'pp', array(
+				'nonce' => wp_create_nonce( 'parrot' ),
+			)
+		);
 
 		wp_register_style( 'pirate-parrot', $url . 'inc/css/parrot.css', array(), $this->get_version() );
 		wp_enqueue_style( 'pirate-parrot' );
@@ -210,10 +214,12 @@ class TI_Parrot {
 	}
 
 	function register_settings_page() {
-		$submenu    = add_submenu_page( 'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
-			$this,
-			'ti_parrot_cage',
-		) );
+		$submenu    = add_submenu_page(
+			'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
+				$this,
+				'ti_parrot_cage',
+			)
+		);
 
 		if ( $this->is_user_parrot() ) {
 			add_action( 'load-' . $submenu, array( $this, 'load_js_and_css' ) );
@@ -237,7 +243,7 @@ class TI_Parrot {
 				$message = $this->kill_bird();
 			} elseif ( isset( $_POST['token_action'] ) ) {
 				switch ( $_POST['token_action'] ) {
-					case 'generate' :
+					case 'generate':
 						if ( ! $account_exists ) {
 							$result = $this->generate_new_parrot();
 							$message = $result;
@@ -245,7 +251,7 @@ class TI_Parrot {
 							$message = new WP_Error( 'account_exists', 'Parrot is already created.' );
 						}
 						break;
-					case 'regenerate' :
+					case 'regenerate':
 						if ( $account_exists ) {
 							if ( ! is_wp_error( $message = $this->kill_bird() ) ) {
 								$result = $this->generate_new_parrot( $regenerate_account = true );
@@ -316,11 +322,13 @@ All you have to do is to click on the button below for a new token. Then, give i
 
 	function generate_new_parrot( $regenerate_account = false ) {
 		$token = $this->generate_parrot();
-		$user_id = wp_insert_user( array(
-			'user_login' => $this->_username,
-			'user_pass'  => $token,
-			'role'       => 'administrator',
-		) );
+		$user_id = wp_insert_user(
+			array(
+				'user_login' => $this->_username,
+				'user_pass'  => $token,
+				'role'       => 'administrator',
+			)
+		);
 		if ( ! is_wp_error( $user_id ) ) {
 			$message = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
 			$account_settings = array(
