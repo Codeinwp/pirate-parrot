@@ -364,9 +364,9 @@ All you have to do is to click on the button below for a new token. Then, give i
 			$output = sprintf(
 				'<p style="font-size: 15px;">%1$s</p>',
 				sprintf(
-					'Parrot info: <br/><textarea class="parrot-info" id="ti-parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Admin: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea> <br/><a href="#" id="ti-parrot-copy" class="button button-primary"> Copy info</a> ',
+					'Parrot info: <br/><textarea class="parrot-info" id="ti-parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Login: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea> <br/><a href="#" id="ti-parrot-copy" class="button button-primary"> Copy info</a> ',
 					esc_html( $this->_options['token'] ),
-					get_admin_url(),
+					wp_login_url(),
 					get_bloginfo( 'version' ),
 					phpversion(),
 					get_locale(),
