@@ -2,7 +2,7 @@
 <form action="" method="post">
 <?php
 foreach ( $registered as $name ) {
-	$checked    = $allowed ? in_array( $name, $allowed ) : false;
+	$checked = $allowed ? in_array( $name, $allowed ) : false;
 ?>
 <input type="checkbox" id="<?php echo $name; ?>" name="allow_plugin[]" value="<?php echo $name; ?>" <?php echo $checked ? 'checked' : ''; ?>>
 <label for="<?php echo $name; ?>"><?php echo $name; ?></label>
@@ -23,7 +23,7 @@ if ( ! $allowed ) {
 	<select id="pp_plugin_name" name="pp_plugin_name" onchange="this.form.submit()">
 <?php
 foreach ( $allowed as $name ) {
-	$selected   = isset( $_POST['pp_plugin_name'] ) && $name == $_POST['pp_plugin_name'] ? 'selected' : '';
+	$selected = isset( $_POST['pp_plugin_name'] ) && $name == $_POST['pp_plugin_name'] ? 'selected' : '';
 ?>
 <option name="<?php echo $name; ?>" <?php echo $selected; ?>><?php echo $name; ?></option>
 <?php
@@ -54,7 +54,7 @@ foreach ( $allowed as $name ) {
 	<?php
 	if ( $logs ) {
 		foreach ( $logs as $log ) {
-			$style  = 'info' !== $log['type'] ? 'display:none' : '';
+			$style = 'info' !== $log['type'] ? 'display:none' : '';
 	?>
 	<div class="pp-log pp-log-<?php echo $log['type']; ?>" style="<?php echo $style; ?>">
 		<span class="pp-log-timestamp"><?php echo $log['time']; ?></span>
