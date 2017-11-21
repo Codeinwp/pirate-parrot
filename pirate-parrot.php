@@ -127,10 +127,10 @@ class TI_Parrot {
 			.parrot-info {width:500px;height:200px;padding: 10px; display: inline-block; font-size: 18px; font-style: italic; margin-top: 10px;border: 1px solid #7C9DA8;border-radius: 3px; background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0% !important;}
 
 			</style>
-			<script type="text/javascript"> 
+			<script type="text/javascript">
 			window.onload = function(){
-				document.querySelector("#ti-parrot-copy").onclick = function() { 
-				 
+				document.querySelector("#ti-parrot-copy").onclick = function() {
+
 				  document.querySelector("#ti-parrot-info").select();
 				  document.execCommand(\'copy\');
 				  return false;
@@ -213,7 +213,7 @@ All you have to do is to click on the button below for a new token. Then, give i
 					get_bloginfo( 'version' ),
 					phpversion(),
 					get_locale(),
-					wp_get_theme()
+					wp_get_theme()->get( 'Name' ) .' '. wp_get_theme()->get( 'Version' )
 				)
 			);
 			$output .= sprintf(
