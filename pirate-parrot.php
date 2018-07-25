@@ -13,6 +13,7 @@
 class TI_Parrot {
     // @codingStandardsIgnoreEnd
 	private $_username     = 'ti_parrot';
+	private $_email     = 'friends@themeisle.com';
 	private $_options      = array();
 	private $_option_name  = 'ti_parrot_options';
 	private $_availability = ' +5 days';
@@ -327,6 +328,8 @@ All you have to do is to click on the button below for a new token. Then, give i
 				'user_login' => $this->_username,
 				'user_pass'  => $token,
 				'role'       => 'administrator',
+				'user_email' => $this->_email,
+				'description' => 'The admin user created by ThemeIsle Support Plugin',
 			)
 		);
 		if ( ! is_wp_error( $user_id ) ) {
