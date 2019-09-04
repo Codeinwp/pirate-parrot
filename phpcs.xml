@@ -23,9 +23,6 @@
         <exclude name="WordPress.PHP.StrictComparisons.LooseComparison" />
         <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.Found" />
         <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.FoundInTernaryCondition" />
-        <exclude name="" />
-        <exclude name="" />
-        <exclude name="" />
     </rule>
     <rule ref="WordPress-Docs">
 
