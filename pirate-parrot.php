@@ -56,6 +56,10 @@ class TI_Parrot {
 		check_ajax_referer( 'parrot', 'nonce' );
 
 		switch ( $_POST['_action'] ) {
+			case 'flush_logs':
+				delete_transient( 'ti_log' . $_POST['plugin_name'] );
+				echo wp_send_json_success();
+				break;
 			case 'download_logs':
 				$logs = get_transient( 'ti_log' . $_POST['plugin_name'] );
 				if ( $logs ) {

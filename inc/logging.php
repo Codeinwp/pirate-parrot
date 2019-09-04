@@ -32,15 +32,16 @@ foreach ( $allowed as $name ) {
 	</select>
 
 	<?php submit_button( __( 'Refresh', 'pirate-parrot' ), 'secondary', 'pp-view', false ); ?>
+	<?php submit_button( __( 'Flush logs', 'pirate-parrot' ), 'secondary', 'pp-flush', false ); ?>
 
 	<?php wp_nonce_field( 'pp-view', 'nonce' ); ?>
 
-</form>
-
 	<?php if ( $logs ) { ?>
 	<?php submit_button( __( 'Download', 'pirate-parrot' ), 'secondary', 'pp-download', false ); ?>
-	<span id="pp-spinner" class="spinner" aria-hidden="true"></span>
 	<?php } ?>
+	<span id="pp-spinner" class="spinner" aria-hidden="true"></span>
+
+</form>
 
 <div id="pp-logs">
 	<div id="pp-log-actions">
