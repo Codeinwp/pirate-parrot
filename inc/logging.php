@@ -3,10 +3,10 @@
 <?php
 foreach ( $registered as $name ) {
 	$checked = $allowed ? in_array( $name, $allowed ) : false;
-?>
+	?>
 <input type="checkbox" id="<?php echo $name; ?>" name="allow_plugin[]" value="<?php echo $name; ?>" <?php echo $checked ? 'checked' : ''; ?>>
 <label for="<?php echo $name; ?>"><?php echo $name; ?></label>
-<?php
+	<?php
 }
 ?>
 		<?php wp_nonce_field( 'pp-allow', 'nonce' ); ?>
@@ -24,9 +24,9 @@ if ( ! $allowed ) {
 <?php
 foreach ( $allowed as $name ) {
 	$selected = isset( $_POST['pp_plugin_name'] ) && $name == $_POST['pp_plugin_name'] ? 'selected' : '';
-?>
+	?>
 <option name="<?php echo $name; ?>" <?php echo $selected; ?>><?php echo $name; ?></option>
-<?php
+	<?php
 }
 ?>
 	</select>
@@ -37,7 +37,7 @@ foreach ( $allowed as $name ) {
 	<?php wp_nonce_field( 'pp-view', 'nonce' ); ?>
 
 	<?php if ( $logs ) { ?>
-	<?php submit_button( __( 'Download', 'pirate-parrot' ), 'secondary', 'pp-download', false ); ?>
+		<?php submit_button( __( 'Download', 'pirate-parrot' ), 'secondary', 'pp-download', false ); ?>
 	<?php } ?>
 	<span id="pp-spinner" class="spinner" aria-hidden="true"></span>
 
@@ -56,13 +56,13 @@ foreach ( $allowed as $name ) {
 	if ( $logs ) {
 		foreach ( $logs as $log ) {
 			$style = 'info' !== $log['type'] ? 'display:none' : '';
-	?>
+			?>
 	<div class="pp-log pp-log-<?php echo $log['type']; ?>" style="<?php echo $style; ?>">
 		<span class="pp-log-timestamp"><?php echo $log['time']; ?></span>
 		<span class="pp-log-type"><?php echo ucwords( $log['type'] ); ?></span>
 		<span class="pp-log-msg"><?php echo basename( $log['file'] ); ?>:<?php echo $log['line']; ?> - <?php echo esc_html( $log['msg'] ); ?></span>
 	</div>
-	<?php
+			<?php
 		}
 	} else {
 		_e( 'No logs found', 'pirate-parrot' );
