@@ -56,6 +56,10 @@ class TI_Parrot {
 		check_ajax_referer( 'parrot', 'nonce' );
 
 		switch ( $_POST['_action'] ) {
+			case 'flush_logs':
+				delete_transient( 'ti_log' . $_POST['plugin_name'] );
+				echo wp_send_json_success();
+				break;
 			case 'download_logs':
 				$logs = get_transient( 'ti_log' . $_POST['plugin_name'] );
 				if ( $logs ) {
@@ -86,7 +90,9 @@ class TI_Parrot {
 		$url = trailingslashit( plugins_url( '', __FILE__ ) );
 		wp_enqueue_script( 'pirate-parrot', $url . 'inc/js/parrot.js', array( 'jquery' ), $this->get_version() );
 		wp_localize_script(
-			'pirate-parrot', 'pp', array(
+			'pirate-parrot',
+			'pp',
+			array(
 				'nonce' => wp_create_nonce( 'parrot' ),
 			)
 		);
@@ -215,7 +221,12 @@ class TI_Parrot {
 
 	function register_settings_page() {
 		$submenu = add_submenu_page(
-			'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
+			'tools.php',
+			'Themeisle Support Parrot',
+			'Themeisle Support Parrot',
+			'manage_options',
+			'ti_pirate_parrot',
+			array(
 				$this,
 				'ti_parrot_cage',
 			)

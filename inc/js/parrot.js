@@ -7,6 +7,31 @@
 	);
 
 	function init() {
+        $( '#pp-flush' ).on(
+			"click", function(e){
+				e.preventDefault();
+				showSpinner();
+				$.ajax(
+					{
+						url: ajaxurl,
+						method: "post",
+						data: {
+							"action"        : "parrot",
+							"_action"       : "flush_logs",
+							"nonce"         : pp.nonce,
+							"plugin_name"   : $( '#pp_plugin_name' ).val()
+						},
+						success: function (data, textStatus, jqXHR) {
+                            $('#pp-view').trigger('click');
+						},
+						complete: function () {
+							hideSpinner();
+						}
+					}
+				);
+			}
+		);
+
 		$( "input[name='pp-log-type'], #pp-log-actions label" ).on(
 			"click", function(e){
 				var radio = $( this ).prop( "tagName" ) == "LABEL" ? $( this ).parent() : $( this );

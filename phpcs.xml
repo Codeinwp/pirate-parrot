@@ -19,6 +19,10 @@
         <exclude name="WordPress.NamingConventions.ValidVariableName.MemberNotSnakeCase" />
         <exclude name="WordPress.NamingConventions.ValidVariableName.NotSnakeCaseMemberVar" />
         <exclude name="WordPress.Files.FileName" />
+        <exclude name="WordPress.PHP.StrictInArray.MissingTrueStrict" />
+        <exclude name="WordPress.PHP.StrictComparisons.LooseComparison" />
+        <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.Found" />
+        <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.FoundInTernaryCondition" />
     </rule>
     <rule ref="WordPress-Docs">
 
