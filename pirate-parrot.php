@@ -381,7 +381,7 @@ All you have to do is to click on the button below for a new token. Then, give i
 					get_bloginfo( 'version' ),
 					phpversion(),
 					get_locale(),
-					wp_get_theme()
+					wp_get_theme()->get( 'Name' ) .' '. wp_get_theme()->get( 'Version' )
 				)
 			);
 			$output                              .= sprintf(
