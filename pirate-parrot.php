@@ -153,7 +153,7 @@ class TI_Parrot {
 		} else {
 			// show the first one by default
 			$allowed = get_transient( 'ti_log_allowed' );
-			if ( count( $allowed ) > 0 ) {
+			if ( $allowed && count( $allowed ) > 0 ) {
 				$logs = get_transient( 'ti_log' . $allowed[0] );
 			}
 		}
