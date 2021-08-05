@@ -11,12 +11,18 @@
         <exclude name="Generic.Files.LowercasedFilename" />
         <exclude name="Generic.NamingConventions.UpperCaseConstantName" />
         <exclude name="Squiz.Commenting" />
+        <exclude name="Squiz.PHP.DisallowMultipleAssignments" />
         <exclude name="WordPress.PHP.YodaConditions.NotYoda" />
         <exclude name="WordPress.NamingConvention.ValidVariableName.StringNotSnakeCase" />
         <exclude name="WordPress.NamingConventions.ValidVariableName.NotSnakeCase" />
         <exclude name="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid" />
         <exclude name="WordPress.NamingConventions.ValidVariableName.MemberNotSnakeCase" />
         <exclude name="WordPress.NamingConventions.ValidVariableName.NotSnakeCaseMemberVar" />
+        <exclude name="WordPress.Files.FileName" />
+        <exclude name="WordPress.PHP.StrictInArray.MissingTrueStrict" />
+        <exclude name="WordPress.PHP.StrictComparisons.LooseComparison" />
+        <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.Found" />
+        <exclude name="WordPress.CodeAnalysis.AssignmentInCondition.FoundInTernaryCondition" />
     </rule>
     <rule ref="WordPress-Docs">
 

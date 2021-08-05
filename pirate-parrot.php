@@ -3,18 +3,28 @@
 /*
  * Plugin Name: Pirate Parrot
  * Plugin URI: http://themeisle.com
- * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their wordpress instances in order for the developers to help solve their issues.
- * Version: 1.2.0
+ * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their WordPress instances in order for the developers to help solve their issues.
+ * Version: 1.3.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
  */
-
+// @codingStandardsIgnoreStart
 class TI_Parrot {
-	private $_username = 'ti_parrot';
-	private $_options = array();
-	private $_option_name = 'ti_parrot_options';
+    // @codingStandardsIgnoreEnd
+	private $_username     = 'ti_parrot';
+	private $_options      = array();
+	private $_option_name  = 'ti_parrot_options';
 	private $_availability = ' +5 days';
+
+	static $_log_types = array( 'error', 'warn', 'info', 'debug' );
+
+	// make this true to mimic parrot user functionality
+	const MIMIC_PARROT_USER = true;
+
+	const LOG_OPTION_EXPIRY_MINS = 5;
+
+	const LOG_LENGTH = 100;
 
 	function __construct() {
 		$this->get_options();
@@ -22,6 +32,141 @@ class TI_Parrot {
 		register_deactivation_hook( __FILE__, array( $this, 'delete_account' ) );
 		add_action( 'ti_kill_parrot', array( $this, 'sleep_bird' ) );
 
+		add_action( 'init', array( $this, 'init' ) );
+	}
+
+	function init() {
+		if ( $this->is_user_parrot() ) {
+			$this->log_register( apply_filters( 'pirate_parrot_log', array() ) );
+			add_action( 'themeisle_log_event', array( $this, 'log_event' ), 10, 5 );
+			add_action( 'wp_ajax_parrot', array( $this, 'ajax' ) );
+		}
+	}
+
+	function get_version() {
+		$version     = '';
+		$plugin_data = get_plugin_data( __FILE__ );
+		if ( $plugin_data ) {
+			$version = $plugin_data['Version'];
+		}
+		return $version;
+	}
+
+	function ajax() {
+		check_ajax_referer( 'parrot', 'nonce' );
+
+		switch ( $_POST['_action'] ) {
+			case 'flush_logs':
+				delete_transient( 'ti_log' . $_POST['plugin_name'] );
+				echo wp_send_json_success();
+				break;
+			case 'download_logs':
+				$logs = get_transient( 'ti_log' . $_POST['plugin_name'] );
+				if ( $logs ) {
+					$logs = array_reverse( $logs );
+					$rows = array();
+					foreach ( $logs as $log ) {
+						$rows[] = $log['time'] . ': (' . ucwords( $log['type'] ) . ') - ' . basename( $log['file'] ) . ':' . $log['line'] . ' - ' . $log['msg'];
+					}
+
+					echo wp_send_json_success(
+						array(
+							'csv'  => implode( PHP_EOL, $rows ),
+							'name' => 'themeisle_logs_' . $_POST['plugin_name'] . '_' . date( 'F_j_Y_H_i_s', current_time( 'timestamp', true ) ) . '.txt',
+						)
+					);
+
+				}
+				break;
+		}
+
+	}
+
+	function load_js_and_css() {
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+	}
+
+	function admin_enqueue_scripts() {
+		$url = trailingslashit( plugins_url( '', __FILE__ ) );
+		wp_enqueue_script( 'pirate-parrot', $url . 'inc/js/parrot.js', array( 'jquery' ), $this->get_version() );
+		wp_localize_script(
+			'pirate-parrot',
+			'pp',
+			array(
+				'nonce' => wp_create_nonce( 'parrot' ),
+			)
+		);
+
+		wp_register_style( 'pirate-parrot', $url . 'inc/css/parrot.css', array(), $this->get_version() );
+		wp_enqueue_style( 'pirate-parrot' );
+	}
+
+	function log_register( $plugins ) {
+		$registered = get_transient( 'ti_log_registered' );
+		if ( ! $registered ) {
+			$registered = array();
+		}
+		if ( $plugins ) {
+			foreach ( $plugins as $plugin_name ) {
+				if ( ! in_array( $plugin_name, $registered ) ) {
+					$registered[] = $plugin_name;
+				}
+			}
+		}
+		set_transient( 'ti_log_registered', $registered );
+	}
+
+	function log_event( $plugin_name, $log_msg, $log_type, $file, $line ) {
+		// first check if this plugin has registered?
+		$allowed = get_transient( 'ti_log_allowed' );
+		if ( is_array( $allowed ) && in_array( $plugin_name, $allowed ) ) {
+			$logs = get_transient( 'ti_log' . $plugin_name );
+			if ( ! $logs ) {
+				$logs = array();
+			}
+			$logs[] = array(
+				'type' => $log_type,
+				'msg'  => $log_msg,
+				'time' => date( 'F j, Y H:i:s', current_time( 'timestamp', true ) ),
+				'file' => $file,
+				'line' => $line,
+			);
+			// keep only the last LOG_LENGTH logs
+			$logs = array_slice( $logs, 0 - self::LOG_LENGTH );
+			set_transient( 'ti_log' . $plugin_name, $logs, self::LOG_OPTION_EXPIRY_MINS * MINUTE_IN_SECONDS );
+		}
+	}
+
+	function handle_logging() {
+		// show this only to the parrot user
+		if ( ! $this->is_user_parrot() ) {
+			return;
+		}
+
+		if ( isset( $_POST['pp-allow-plugins'] ) && wp_verify_nonce( $_POST['nonce'], 'pp-allow' ) ) {
+			set_transient( 'ti_log_allowed', isset( $_POST['allow_plugin'] ) ? $_POST['allow_plugin'] : array() );
+		}
+
+		$logs = null;
+		if ( isset( $_POST['pp_plugin_name'] ) && wp_verify_nonce( $_POST['nonce'], 'pp-view' ) ) {
+			$logs = get_transient( 'ti_log' . $_POST['pp_plugin_name'] );
+		} else {
+			// show the first one by default
+			$allowed = get_transient( 'ti_log_allowed' );
+			if ( count( $allowed ) > 0 ) {
+				$logs = get_transient( 'ti_log' . $allowed[0] );
+			}
+		}
+
+		$registered = get_transient( 'ti_log_registered' );
+		$allowed    = get_transient( 'ti_log_allowed' );
+		if ( $registered ) {
+			include_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/logging.php';
+		}
+	}
+
+	function get_log_types() {
+		return self::$_log_types;
 	}
 
 	function get_options() {
@@ -57,12 +202,12 @@ class TI_Parrot {
 		if ( $support_account_data ) {
 			$support_account_id = $support_account_data->ID;
 			if ( ! wp_delete_user( $support_account_id ) ) {
-				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !','pirate-parrot' ) );
+				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !', 'pirate-parrot' ) );
 			}
 			delete_option( $this->_option_name );
 			$this->clear_sleep_bird();
 		} else {
-			return new WP_Error( 'get_user_data', __( 'Cannot find parrot. Try to recall him.','pirate-parrot' ) );
+			return new WP_Error( 'get_user_data', __( 'Cannot find parrot. Try to recall him.', 'pirate-parrot' ) );
 		}
 		// update options variable
 		$this->get_options();
@@ -75,33 +220,52 @@ class TI_Parrot {
 	}
 
 	function register_settings_page() {
-		add_submenu_page( 'tools.php', 'Themeisle Support Parrot', 'Themeisle Support Parrot', 'manage_options', 'ti_pirate_parrot', array(
-			$this,
-			'ti_parrot_cage',
-		) );
+		$submenu = add_submenu_page(
+			'tools.php',
+			'Themeisle Support Parrot',
+			'Themeisle Support Parrot',
+			'manage_options',
+			'ti_pirate_parrot',
+			array(
+				$this,
+				'ti_parrot_cage',
+			)
+		);
+
+		if ( $this->is_user_parrot() ) {
+			add_action( 'load-' . $submenu, array( $this, 'load_js_and_css' ) );
+		}
+	}
+
+	function is_user_parrot() {
+		if ( self::MIMIC_PARROT_USER ) {
+			return true;
+		}
+		$current_user = wp_get_current_user();
+		return $current_user->user_login === $this->_username;
 	}
 
 	function ti_parrot_cage() {
-		$message = '';
+		$message        = '';
 		$account_exists = username_exists( $this->_username );
-		$token_action = $account_exists ? 'regenerate' : 'generate';
+		$token_action   = $account_exists ? 'regenerate' : 'generate';
 		if ( isset( $_POST['token_delete'] ) || isset( $_POST['token_action'] ) ) {
 			if ( isset( $_POST['token_delete'] ) ) {
 				$message = $this->kill_bird();
 			} elseif ( isset( $_POST['token_action'] ) ) {
 				switch ( $_POST['token_action'] ) {
-					case 'generate' :
+					case 'generate':
 						if ( ! $account_exists ) {
-							$result = $this->generate_new_parrot();
+							$result  = $this->generate_new_parrot();
 							$message = $result;
 						} else {
 							$message = new WP_Error( 'account_exists', 'Parrot is already created.' );
 						}
 						break;
-					case 'regenerate' :
+					case 'regenerate':
 						if ( $account_exists ) {
 							if ( ! is_wp_error( $message = $this->kill_bird() ) ) {
-								$result = $this->generate_new_parrot( $regenerate_account = true );
+								$result  = $this->generate_new_parrot( $regenerate_account = true );
 								$message = $result;
 							}
 						} else {
@@ -163,17 +327,21 @@ All you have to do is to click on the button below for a new token. Then, give i
 			$this->get_parrot_info(),
 			$this->get_status_message( $message )
 		);
+
+		$this->handle_logging();
 	}
 
 	function generate_new_parrot( $regenerate_account = false ) {
-		$token = $this->generate_parrot();
-		$user_id = wp_insert_user( array(
-			'user_login' => $this->_username,
-			'user_pass'  => $token,
-			'role'       => 'administrator',
-		) );
+		$token   = $this->generate_parrot();
+		$user_id = wp_insert_user(
+			array(
+				'user_login' => $this->_username,
+				'user_pass'  => $token,
+				'role'       => 'administrator',
+			)
+		);
 		if ( ! is_wp_error( $user_id ) ) {
-			$message = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
+			$message          = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
 			$account_settings = array(
 				'date_created' => time(),
 				'token'        => $token,
@@ -204,19 +372,19 @@ All you have to do is to click on the button below for a new token. Then, give i
 	function get_parrot_info() {
 		$output = '';
 		if ( isset( $this->_options['token'] ) ) {
-			$output = sprintf(
+			$output                               = sprintf(
 				'<p style="font-size: 15px;">%1$s</p>',
 				sprintf(
-					'Parrot info: <br/><textarea class="parrot-info" id="ti-parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Admin: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea> <br/><a href="#" id="ti-parrot-copy" class="button button-primary"> Copy info</a> ',
+					'Parrot info: <br/><textarea class="parrot-info" id="ti-parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Login: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea> <br/><a href="#" id="ti-parrot-copy" class="button button-primary"> Copy info</a> ',
 					esc_html( $this->_options['token'] ),
-					get_admin_url(),
+					wp_login_url(),
 					get_bloginfo( 'version' ),
 					phpversion(),
 					get_locale(),
 					wp_get_theme()->get( 'Name' ) .' '. wp_get_theme()->get( 'Version' )
 				)
 			);
-			$output .= sprintf(
+			$output                              .= sprintf(
 				'<p><small>%1$s</small></p>',
 				( ! is_wp_error( $expiration_date = $this->get_expiration_date() )
 					? 'This parrot will leave on ' . esc_html( $expiration_date )
@@ -232,14 +400,14 @@ All you have to do is to click on the button below for a new token. Then, give i
 		if ( ! isset( $this->_options['date_created'] ) ) {
 			return new WP_Error( 'date_created_missing', 'Parrot fainted. You need to revive him. ' );
 		}
-		$format = sprintf(
+		$format               = sprintf(
 			'%1$s, %2$s',
 			get_option( 'date_format' ),
 			get_option( 'time_format' )
 		);
 		$expiration_date_unix = strtotime( $this->_availability, $this->_options['date_created'] );
 		// use gmt offset to display local time
-		$gmt_offset = get_option( 'gmt_offset' ) * HOUR_IN_SECONDS;
+		$gmt_offset      = get_option( 'gmt_offset' ) * HOUR_IN_SECONDS;
 		$expiration_date = date_i18n( $format, $expiration_date_unix + $gmt_offset );
 		echo date_i18n( $format, time() + $gmt_offset );
 
@@ -247,7 +415,7 @@ All you have to do is to click on the button below for a new token. Then, give i
 	}
 
 	function get_status_message( $message ) {
-		$output = '';
+		$output           = '';
 		$is_error_message = is_wp_error( $message );
 		if ( ! $is_error_message ) {
 			if ( '' !== $message ) {
