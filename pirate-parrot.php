@@ -153,7 +153,7 @@ class TI_Parrot {
 		} else {
 			// show the first one by default
 			$allowed = get_transient( 'ti_log_allowed' );
-			if ( count( $allowed ) > 0 ) {
+			if ( $allowed && count( $allowed ) > 0 ) {
 				$logs = get_transient( 'ti_log' . $allowed[0] );
 			}
 		}
@@ -185,9 +185,11 @@ class TI_Parrot {
 	}
 
 	function kill_sleep_bird() {
-		$expiration_date_unix = strtotime( $this->_availability, $this->_options['date_created'] );
-		if ( time() >= $expiration_date_unix ) {
-			$this->kill_bird();
+		if ( $this->_options && isset( $this->_options['date_created'] ) ) {
+			$expiration_date_unix = strtotime( $this->_availability, $this->_options['date_created'] );
+			if ( time() >= $expiration_date_unix ) {
+				$this->kill_bird();
+			}
 		}
 	}
 
