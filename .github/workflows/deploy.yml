@@ -21,6 +21,6 @@ jobs:
         env:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET_DOWNLOADS }}
           AWS_ACCESS_KEY_ID: ${{ secrets.S3_DOWNLOADS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DOWNLOADS_AWS_SECRET_ACCESS_KEY }}
           SOURCE_DIR: 'artifact'      # optional: defaults to entire repository
           DEST_DIR: utils/pirate-parrot/latest
