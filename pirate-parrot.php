@@ -30,7 +30,7 @@ class TI_Parrot {
 	function __construct() {
 		$this->get_options();
 		add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
-		register_deactivation_hook( __FILE__, array( $this, 'delete_account' ) );
+		register_deactivation_hook( __FILE__, array( $this, 'sleep_bird' ) );
 		add_action( 'ti_kill_parrot', array( $this, 'sleep_bird' ) );
 
 		add_action( 'init', array( $this, 'init' ) );

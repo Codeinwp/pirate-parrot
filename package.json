@@ -20,9 +20,9 @@
     "languageteam": "Themeisle Translate <friends@themeisle.com>",
     "lasttranslator": "Themeisle Translate Team <friends@themeisle.com>"
   },
+  "scripts": {
+    "dist" : "bash bin/dist.sh"
+  },
   "devDependencies": {
-    "grunt": "^1.0.1",
-    "grunt-plugin-fleet": "codeinwp/grunt-plugin-fleet",
-    "load-project-config": "~0.2.0"
   }
 }

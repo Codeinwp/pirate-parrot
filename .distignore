@@ -1,5 +1,6 @@
 .git
 .distignore
+.idea
 .gitignore
 .travis.yml
 .jshintrc
@@ -13,6 +14,7 @@ bin
 tests
 phpunit.xml
 npm-debug.log
+.github
 dist
 artifact
 composer.json
