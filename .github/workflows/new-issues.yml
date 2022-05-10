@@ -16,7 +16,7 @@ jobs:
           github-token: ${{ secrets.BOT_TOKEN_PROJECT }}
       - name: Set Team
         env:
-          GITHUB_TOKEN: ${{ secrets.PROJECT_PLANNING }}
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN_PROJECT }}
         run: |
           gh api graphql -f query='
           mutation(
