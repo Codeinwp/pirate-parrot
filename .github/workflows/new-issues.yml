@@ -10,6 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/add-to-project@main
+        id: add_project
         with:
           project-url: ${{ secrets.PROJECT_PLANNING }}
           github-token: ${{ secrets.BOT_TOKEN_PROJECT }}
+      - name: Set Team
+        env:
+          GITHUB_TOKEN: ${{ secrets.PROJECT_PLANNING }}
+        run: |
+          gh api graphql -f query='
+          mutation(
+              $project: ID!
+              $item: ID!
+              $status_field: ID!
+              $status_value: String!
+            )  {
+            updateProjectNextItemField(
+              input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $status_field
+                value: $status_value
+              }
+            ) {
+              projectNextItem {
+                id
+              }
+            }
+          }' -f project=${{ secrets.PROJECT_PLANNING_ID }} -f item=${{ steps.add_project.outputs.itemId }} -f status_field=${{ secrets.PLANNING_TEAM_FIELD_ID }} -f status_value=ed46988b --silent
