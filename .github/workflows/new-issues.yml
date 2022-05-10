@@ -1,14 +1,15 @@
-name: Move new/reopened issues into Triage
+name: Add to project
 
 on:
   issues:
-    types: [opened,reopened]
+    types: [opened,transferred]
+
 jobs:
-  automate-project-columns:
+  add-to-project:
+    name: Add issue to project
     runs-on: ubuntu-latest
     steps:
-      - uses: alex-page/github-project-automation-plus@v0.2.2
+      - uses: actions/add-to-project@main
         with:
-          project: Products(Extended)
-          column: Triage
-          repo-token: ${{ secrets.BOT_TOKEN }}
+          project-url: ${{ secrets.PROJECT_PLANNING }}
+          github-token: ${{ secrets.BOT_TOKEN }}
