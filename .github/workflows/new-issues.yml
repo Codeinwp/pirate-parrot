@@ -12,4 +12,4 @@ jobs:
       - uses: actions/add-to-project@main
         with:
           project-url: ${{ secrets.PROJECT_PLANNING }}
-          github-token: ${{ secrets.BOT_TOKEN }}
+          github-token: ${{ secrets.BOT_TOKEN_PROJECT }}
