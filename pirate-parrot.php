@@ -48,6 +48,16 @@ class TI_Parrot {
 		}
 		delete_transient( 'ti_parrot_activation_redirect' );
 
+		// Avoid breaking AJAX/REST/cron requests.
+		if ( wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+			return;
+		}
+
+		// Only redirect users who can actually access the screen.
+		if ( is_network_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		// Don't redirect when activating multiple plugins at once.
 		if ( isset( $_GET['activate-multi'] ) ) {
 			return;
