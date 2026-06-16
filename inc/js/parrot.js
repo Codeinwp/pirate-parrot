@@ -107,19 +107,24 @@
 
 	function legacyCopy( text ) {
 		return new Promise(
-			function( resolve ){
-				var area         = document.createElement( "textarea" );
-				area.value       = text;
+			function( resolve, reject ){
+				var area            = document.createElement( "textarea" );
+				var ok              = false;
+				area.value          = text;
 				area.style.position = "fixed";
 				area.style.opacity  = "0";
 				document.body.appendChild( area );
 				area.focus();
 				area.select();
 				try {
-					document.execCommand( "copy" );
+					ok = document.execCommand( "copy" );
 				} catch ( err ) {}
 				document.body.removeChild( area );
-				resolve();
+				if ( ok ) {
+					resolve();
+				} else {
+					reject( new Error( "copy_failed" ) );
+				}
 			}
 		);
 	}
