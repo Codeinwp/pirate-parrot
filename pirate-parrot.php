@@ -356,9 +356,7 @@ class TI_Parrot {
 
 			<form method="post" class="ti-parrot-actions">
 				<?php submit_button( $primary_label, ( $is_active ? 'secondary' : 'primary' ), 'submit', false ); ?>
-				<?php if ( $account_exists ) : ?>
-					<?php submit_button( __( 'Release parrot', 'pirate-parrot' ), 'ti-parrot-release', 'token_delete', false ); ?>
-				<?php endif; ?>
+					<?php submit_button( __( 'Release parrot', 'pirate-parrot' ), 'secondary', 'token_delete', false, array( 'class' => 'ti-parrot-release' ) ); ?>
 				<input type="hidden" name="token_action" value="<?php echo esc_attr( $token_action ); ?>" />
 			</form>
 		</div>
