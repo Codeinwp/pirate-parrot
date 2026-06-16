@@ -39,7 +39,7 @@ class TI_Parrot {
 	}
 
 	function wake_bird() {
-		set_transient( 'ti_parrot_activation_redirect', true, 30 );
+		set_transient( 'ti_parrot_activation_redirect', true, 5 * MINUTE_IN_SECONDS );
 	}
 
 	function maybe_activation_redirect() {
