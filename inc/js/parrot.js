@@ -7,6 +7,19 @@
 	);
 
 	function init() {
+		$( document ).on(
+			"click", ".ti-parrot-copy", function( e ){
+				e.preventDefault();
+				var button = this;
+				var text   = button.getAttribute( "data-clipboard-text" ) || "";
+				copyText( text ).then(
+					function(){
+						showCopied( button );
+					}
+				).catch( function(){} );
+			}
+		);
+
         $( '#pp-flush' ).on(
 			"click", function(e){
 				e.preventDefault();
@@ -80,6 +93,62 @@
 					}
 				);
 			}
+		);
+	}
+
+	function copyText( text ) {
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			return navigator.clipboard.writeText( text ).catch( function(){
+				return legacyCopy( text );
+			} );
+		}
+		return legacyCopy( text );
+	}
+
+	function legacyCopy( text ) {
+		return new Promise(
+			function( resolve, reject ){
+				var area            = document.createElement( "textarea" );
+				var ok              = false;
+				area.value          = text;
+				area.style.position = "fixed";
+				area.style.opacity  = "0";
+				document.body.appendChild( area );
+				area.focus();
+				area.select();
+				try {
+					ok = document.execCommand( "copy" );
+				} catch ( err ) {}
+				document.body.removeChild( area );
+				if ( ok ) {
+					resolve();
+				} else {
+					reject( new Error( "copy_failed" ) );
+				}
+			}
+		);
+	}
+
+	function showCopied( button ) {
+		var $button = $( button );
+		var $icon   = $button.find( ".dashicons" );
+		var $label  = $button.find( ".ti-parrot-copy-label" );
+		var prev    = $label.length ? $label.text() : "";
+
+		$button.addClass( "ti-parrot-copied" );
+		$icon.removeClass( "dashicons-clipboard" ).addClass( "dashicons-yes" );
+		if ( $label.length ) {
+			$label.text( ( typeof pp !== "undefined" && pp.copied ) ? pp.copied : "Copied!" );
+		}
+
+		setTimeout(
+			function(){
+				$button.removeClass( "ti-parrot-copied" );
+				$icon.removeClass( "dashicons-yes" ).addClass( "dashicons-clipboard" );
+				if ( $label.length ) {
+					$label.text( prev );
+				}
+			}, 1600
 		);
 	}
 

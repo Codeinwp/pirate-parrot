@@ -1,9 +1,9 @@
 <?php
 
 /*
- * Plugin Name: Pirate Parrot
+ * Plugin Name: Themeisle Support Parrot
  * Plugin URI: http://themeisle.com
- * Description: Pirate parrot is a plugin for Themeisle that allow customers to give access to their WordPress instances in order for the developers to help solve their issues.
+ * Description: A Themeisle plugin that allows users to securely share WordPress access with developers for fast, efficient troubleshooting.
  * Version: 1.3.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
@@ -30,10 +30,41 @@ class TI_Parrot {
 	function __construct() {
 		$this->get_options();
 		add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
+		register_activation_hook( __FILE__, array( $this, 'wake_bird' ) );
 		register_deactivation_hook( __FILE__, array( $this, 'sleep_bird' ) );
 		add_action( 'ti_kill_parrot', array( $this, 'sleep_bird' ) );
 
 		add_action( 'init', array( $this, 'init' ) );
+		add_action( 'admin_init', array( $this, 'maybe_activation_redirect' ) );
+	}
+
+	function wake_bird() {
+		set_transient( 'ti_parrot_activation_redirect', true, 5 * MINUTE_IN_SECONDS );
+	}
+
+	function maybe_activation_redirect() {
+		if ( ! get_transient( 'ti_parrot_activation_redirect' ) ) {
+			return;
+		}
+		delete_transient( 'ti_parrot_activation_redirect' );
+
+		// Avoid breaking AJAX/REST/cron requests.
+		if ( wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+			return;
+		}
+
+		// Only redirect users who can actually access the screen.
+		if ( is_network_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Don't redirect when activating multiple plugins at once.
+		if ( isset( $_GET['activate-multi'] ) ) {
+			return;
+		}
+
+		wp_safe_redirect( admin_url( 'tools.php?page=ti_pirate_parrot' ) );
+		exit;
 	}
 
 	function init() {
@@ -94,7 +125,8 @@ class TI_Parrot {
 			'pirate-parrot',
 			'pp',
 			array(
-				'nonce' => wp_create_nonce( 'parrot' ),
+				'nonce'  => wp_create_nonce( 'parrot' ),
+				'copied' => __( 'Copied!', 'pirate-parrot' ),
 			)
 		);
 
@@ -235,9 +267,7 @@ class TI_Parrot {
 			)
 		);
 
-		if ( $this->is_user_parrot() ) {
-			add_action( 'load-' . $submenu, array( $this, 'load_js_and_css' ) );
-		}
+		add_action( 'load-' . $submenu, array( $this, 'load_js_and_css' ) );
 	}
 
 	function is_user_parrot() {
@@ -283,53 +313,54 @@ class TI_Parrot {
 			// delete the account if it's expired
 			$this->kill_sleep_bird();
 		}
-		printf(
-			'
-			<style>
+		$is_active     = $account_exists && isset( $this->_options['token'] );
+		$primary_label = $account_exists ? __( 'Regenerate token', 'pirate-parrot' ) : __( 'Call the parrot', 'pirate-parrot' );
+		?>
+		<div class="wrap ti-parrot-wrap">
+			<div class="ti-parrot-header">
+				<img class="ti-parrot-logo" src="<?php echo esc_url( plugin_dir_url( __FILE__ ) . 'themeisle-logo.png' ); ?>" alt="Themeisle" width="98" height="32" />
+				<span class="ti-parrot-header-sep" aria-hidden="true"></span>
+				<h1><?php esc_html_e( 'Support Parrot', 'pirate-parrot' ); ?></h1>
+			</div>
 
-			.wrap-background{ background-color: #ADDBE9;padding: 15px; border: 1px solid #93C2D1; border-radius: 2px; background: url("' . plugin_dir_url( __FILE__ ) . 'pattern.png") repeat 0px 0px;}
-			.wrap h2{ font-size: 40px;font-weight: 600;padding: 9px 15px 4px 0px;line-height: 29px; color: #FFF; text-shadow: 1px 2px 0px #5DA9BE;; background: url("' . plugin_dir_url( __FILE__ ) . 'logo.png") no-repeat 0px 0px; padding: 25px 85px !important; }
-			#submit {background: #FF7F66 none repeat scroll 0% 0%;padding: 0px 15px;font-size: 16px;text-shadow: none;color: #FFF;border-radius: 3px;margin: 0px;border: medium none;box-shadow: 0px 3px 0px #CB6956;}
-			#contour {background: #FFF none repeat scroll 0% 0%;border-left: 4px solid #7FA1AB;box-shadow: 0px 2px 1px 0px rgba(0, 0, 0, 0.1);margin: 10px 0px 20px; padding: 10px 12px; color: #595959;}
-			.parrot-info {width:500px;height:200px;padding: 10px; display: inline-block; font-size: 18px; font-style: italic; margin-top: 10px;border: 1px solid #7C9DA8;border-radius: 3px; background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0% !important;}
+			<hr class="wp-header-end" />
 
-			</style>
-			<script type="text/javascript">
-			window.onload = function(){
-				document.querySelector("#ti-parrot-copy").onclick = function() {
+			<?php echo $this->get_status_message( $message ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within the method. ?>
 
-				  document.querySelector("#ti-parrot-info").select();
-				  document.execCommand(\'copy\');
-				  return false;
-				}
-			}
-			</script>
+			<?php if ( $is_active ) : ?>
+				<?php $expiration = $this->get_expiration_date(); ?>
+				<div class="ti-parrot-status ti-parrot-status--active">
+					<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+					<span>
+						<strong><?php esc_html_e( 'Access active', 'pirate-parrot' ); ?></strong>
+						<?php if ( ! is_wp_error( $expiration ) ) : ?>
+							&mdash; <?php printf( esc_html__( 'expires %s', 'pirate-parrot' ), esc_html( $expiration ) ); ?>
+						<?php endif; ?>
+					</span>
+				</div>
+			<?php else : ?>
+				<div class="ti-parrot-status ti-parrot-status--inactive">
+					<span class="dashicons dashicons-marker" aria-hidden="true"></span>
+					<span><?php esc_html_e( 'No active access', 'pirate-parrot' ); ?></span>
+				</div>
+			<?php endif; ?>
 
-			<div class="wrap wrap-background">
+			<div class="ti-parrot-card ti-parrot-intro">
+				<p><?php esc_html_e( 'This creates a temporary admin account so our support team can access your dashboard. It is removed automatically after 5 days, or you can remove it at any time by clicking on the Release parrot button.', 'pirate-parrot' ); ?></p>
+				<p class="ti-parrot-intro-hint"><?php esc_html_e( 'When asked, copy the details below and send them to the agent helping you through our private messaging.', 'pirate-parrot' ); ?></p>
+			</div>
 
-				<h2>%1$s</h2>
+			<?php if ( $is_active ) : ?>
+				<?php $this->render_parrot_details(); ?>
+			<?php endif; ?>
 
-				%7$s
-
-				<p id="contour">%3$s</p>
-
-				%6$s
-
-				<form method="post" >
-					%2$s
-					%5$s
-					<input name="token_action" type="hidden" value="%4$s" />
-				</form>
-			</div>',
-			'Themeisle Parrot',
-			get_submit_button( ( 'regenerate' === $token_action ? 'Recall Parrot' : 'Call Parrot' ), 'primary', 'submit', false ),
-			'This plugin was made to allow a secured assistance from our support team, with no need to use your admin password. It will create a temporary admin account for our team, so they can have access to your WordPress Dashboard. This thing will be possible through a secret token, which will be generated by the plugin and which will be available for only 5 days. If our work is not finished yet, a new token will be generated for another 5 days to let us log in to your admin area again. Once our job is done, you can remove the new account or you can disable the plugin which will automatically delete the account.
-All you have to do is to click on the button below for a new token. Then, give it to the moderator who has requested access, using our Private Messaging.',
-			esc_attr( $token_action ),
-			( $account_exists ? get_submit_button( 'Release Parrot', 'delete', 'token_delete', false ) : '' ),
-			$this->get_parrot_info(),
-			$this->get_status_message( $message )
-		);
+			<form method="post" class="ti-parrot-actions">
+				<?php submit_button( $primary_label, ( $is_active ? 'secondary' : 'primary' ), 'submit', false ); ?>
+					<?php submit_button( __( 'Release parrot', 'pirate-parrot' ), 'secondary', 'token_delete', false, array( 'class' => 'ti-parrot-release' ) ); ?>
+				<input type="hidden" name="token_action" value="<?php echo esc_attr( $token_action ); ?>" />
+			</form>
+		</div>
+		<?php
 
 		$this->handle_logging();
 	}
@@ -374,31 +405,74 @@ All you have to do is to click on the button below for a new token. Then, give i
 		wp_schedule_event( time(), 'twicedaily', 'ti_kill_parrot' );
 	}
 
-	function get_parrot_info() {
-		$output = '';
-		if ( isset( $this->_options['token'] ) ) {
-			$output                               = sprintf(
-				'<p style="font-size: 15px;">%1$s</p>',
-				sprintf(
-					'Parrot info: <br/><textarea class="parrot-info" id="ti-parrot-info" readonly>Parrot Token: %1$s&#10;WordPress Login: %2$s&#10;WordPress Version: %3$s&#10;PHP Version: %4$s&#10;Site Locale: %5$s&#10;Theme: %6$s</textarea> <br/><a href="#" id="ti-parrot-copy" class="button button-primary"> Copy info</a> ',
-					esc_html( $this->_options['token'] ),
-					wp_login_url(),
-					get_bloginfo( 'version' ),
-					phpversion(),
-					get_locale(),
-					wp_get_theme()->get( 'Name' ) .' '. wp_get_theme()->get( 'Version' )
-				)
-			);
-			$output                              .= sprintf(
-				'<p><small>%1$s</small></p>',
-				( ! is_wp_error( $expiration_date = $this->get_expiration_date() )
-					? 'This parrot will leave on ' . esc_html( $expiration_date )
-					: $expiration_date->get_error_message()
-				)
-			);
-		}
+	function get_parrot_info_rows() {
+		$theme = wp_get_theme();
 
-		return $output;
+		return array(
+			array(
+				'label' => __( 'Access token', 'pirate-parrot' ),
+				'value' => isset( $this->_options['token'] ) ? $this->_options['token'] : '',
+				'mono'  => true,
+			),
+			array(
+				'label' => __( 'Login URL', 'pirate-parrot' ),
+				'value' => wp_login_url(),
+			),
+			array(
+				'label' => __( 'WordPress version', 'pirate-parrot' ),
+				'value' => get_bloginfo( 'version' ),
+			),
+			array(
+				'label' => __( 'PHP version', 'pirate-parrot' ),
+				'value' => phpversion(),
+			),
+			array(
+				'label' => __( 'Site locale', 'pirate-parrot' ),
+				'value' => get_locale(),
+			),
+			array(
+				'label' => __( 'Theme', 'pirate-parrot' ),
+				'value' => trim( $theme->get( 'Name' ) . ' ' . $theme->get( 'Version' ) ),
+			),
+		);
+	}
+
+	function render_parrot_details() {
+		$rows = $this->get_parrot_info_rows();
+
+		// Build the "copy all" payload, one "Label: value" per line.
+		$lines = array();
+		foreach ( $rows as $row ) {
+			$lines[] = $row['label'] . ': ' . $row['value'];
+		}
+		$copy_all   = implode( "\n", $lines );
+		$expiration = $this->get_expiration_date();
+		?>
+		<div class="ti-parrot-card ti-parrot-details">
+			<div class="ti-parrot-details-header">
+				<span class="ti-parrot-details-title"><?php esc_html_e( 'Details to share with support', 'pirate-parrot' ); ?></span>
+				<button type="button" class="button button-primary ti-parrot-copy" data-clipboard-text="<?php echo esc_attr( $copy_all ); ?>">
+					<span class="dashicons dashicons-clipboard" aria-hidden="true"></span>
+					<span class="ti-parrot-copy-label"><?php esc_html_e( 'Copy all details', 'pirate-parrot' ); ?></span>
+				</button>
+			</div>
+			<?php foreach ( $rows as $row ) : ?>
+				<div class="ti-parrot-row">
+					<span class="ti-parrot-row-label"><?php echo esc_html( $row['label'] ); ?></span>
+					<span class="ti-parrot-row-value<?php echo empty( $row['mono'] ) ? '' : ' ti-parrot-mono'; ?>"><?php echo esc_html( $row['value'] ); ?></span>
+				</div>
+			<?php endforeach; ?>
+			<p class="ti-parrot-expiry">
+				<?php
+				if ( ! is_wp_error( $expiration ) ) {
+					printf( esc_html__( 'This parrot will leave on %s', 'pirate-parrot' ), esc_html( $expiration ) );
+				} else {
+					echo esc_html( $expiration->get_error_message() );
+				}
+				?>
+			</p>
+		</div>
+		<?php
 	}
 
 	function get_expiration_date() {
@@ -414,7 +488,6 @@ All you have to do is to click on the button below for a new token. Then, give i
 		// use gmt offset to display local time
 		$gmt_offset      = get_option( 'gmt_offset' ) * HOUR_IN_SECONDS;
 		$expiration_date = date_i18n( $format, $expiration_date_unix + $gmt_offset );
-		echo date_i18n( $format, time() + $gmt_offset );
 
 		return $expiration_date;
 	}
@@ -424,17 +497,15 @@ All you have to do is to click on the button below for a new token. Then, give i
 		$is_error_message = is_wp_error( $message );
 		if ( ! $is_error_message ) {
 			if ( '' !== $message ) {
-				$output = sprintf( '<p>%1$s</p>', $message );
+				$output = sprintf( '<p>%1$s</p>', esc_html( $message ) );
 			}
 		} else {
-			$output = sprintf( '<p>%1$s</p>', $message->get_error_message() );
+			$output = sprintf( '<p>%1$s</p>', esc_html( $message->get_error_message() ) );
 		}
 		if ( '' !== $output ) {
 			$output = sprintf(
-				'<div id="setting-error-settings_updated" class="%1$s settings-error">
-					%2$s
-				</div>',
-				( $is_error_message ? 'error' : 'updated' ),
+				'<div class="notice %1$s ti-parrot-notice">%2$s</div>',
+				( $is_error_message ? 'notice-error' : 'notice-success' ),
 				$output
 			);
 		}
