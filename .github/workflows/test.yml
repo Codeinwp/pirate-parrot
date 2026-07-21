@@ -67,6 +67,11 @@ jobs:
           tools: composer:v2
       - name: Start MySQL
         run: sudo systemctl start mysql.service
+      - name: Use native password auth on PHP < 7.4
+        # mysqli only learned caching_sha2_password (the MySQL 8 default)
+        # in PHP 7.4; older clients can't connect without this
+        if: matrix.php == '7.2' || matrix.php == '7.3'
+        run: mysql -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
       - name: Install WordPress test suite
         run: bash bin/install-wp-tests.sh wordpress_test root root localhost ${{ matrix.wp }}
       - name: Install PHPUnit
