@@ -37,13 +37,29 @@ install_core() {
 	curl -fsSL "https://wordpress.org/wordpress-$WP_VERSION.tar.gz" | tar -xz -C "$WP_CORE_DIR" --strip-components=1
 }
 
+download_develop() {
+	# wordpress-develop tags are always three-part (6.8.0, never 6.8),
+	# while wordpress.org releases drop the trailing .0 — try both, then
+	# the version branch as a last resort.
+	local target=$1 ref
+	for ref in "refs/tags/$WP_VERSION" "refs/tags/$WP_VERSION.0" "refs/heads/$WP_VERSION"; do
+		rm -rf "$target"
+		mkdir -p "$target"
+		if curl -fsSL "https://github.com/WordPress/wordpress-develop/archive/$ref.tar.gz" | tar -xz -C "$target" --strip-components=1 2>/dev/null; then
+			return 0
+		fi
+	done
+	echo "Could not download the WordPress test suite for $WP_VERSION" >&2
+	return 1
+}
+
 install_test_suite() {
 	if [ -d "$WP_TESTS_DIR/includes" ]; then
 		return
 	fi
 	local workdir
 	workdir=$(mktemp -d)
-	curl -fsSL "https://github.com/WordPress/wordpress-develop/archive/refs/tags/$WP_VERSION.tar.gz" | tar -xz -C "$workdir" --strip-components=1
+	download_develop "$workdir"
 	mkdir -p "$WP_TESTS_DIR"
 	cp -r "$workdir/tests/phpunit/includes" "$WP_TESTS_DIR/includes"
 	cp -r "$workdir/tests/phpunit/data" "$WP_TESTS_DIR/data"
