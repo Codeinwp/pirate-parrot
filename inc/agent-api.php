@@ -28,8 +28,6 @@ class TI_Parrot_Agent_API {
 
 	const RATE_WINDOW = 3600;
 
-	const AUDIT_LENGTH = 20;
-
 	private $parrot;
 
 	function __construct( $parrot ) {
@@ -65,20 +63,14 @@ class TI_Parrot_Agent_API {
 
 	function check_auth( $request ) {
 		if ( $this->is_rate_limited() ) {
-			$this->audit( $request, 'rate_limited' );
-
 			return new WP_Error( 'pp_rate_limited', __( 'Too many requests.', 'pirate-parrot' ), array( 'status' => 429 ) );
 		}
 
 		$token  = $this->get_request_token( $request );
 		$stored = $this->parrot->get_agent_token_hash();
 		if ( '' === $token || '' === $stored || ! $this->parrot->is_grant_active() || ! hash_equals( $stored, hash( 'sha256', $token ) ) ) {
-			$this->audit( $request, 'denied' );
-
 			return new WP_Error( 'pp_invalid_token', __( 'Missing, invalid or expired agent token.', 'pirate-parrot' ), array( 'status' => 401 ) );
 		}
-
-		$this->audit( $request, 'ok' );
 
 		return true;
 	}
@@ -102,22 +94,6 @@ class TI_Parrot_Agent_API {
 		set_transient( 'ti_parrot_agent_rate', $count + 1, self::RATE_WINDOW );
 
 		return false;
-	}
-
-	function audit( $request, $result ) {
-		$entries = get_option( 'ti_parrot_agent_audit', array() );
-		if ( ! is_array( $entries ) ) {
-			$entries = array();
-		}
-		$entries[] = array(
-			'time'   => time(),
-			'route'  => $request->get_route(),
-			'ip'     => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
-			'agent'  => isset( $_SERVER['HTTP_USER_AGENT'] ) ? substr( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ), 0, 120 ) : '',
-			'result' => $result,
-		);
-		$entries   = array_slice( $entries, 0 - self::AUDIT_LENGTH );
-		update_option( 'ti_parrot_agent_audit', $entries, false );
 	}
 
 	function get_manifest( $request ) {

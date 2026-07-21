@@ -261,7 +261,6 @@ class TI_Parrot {
 			}
 			delete_option( $this->_option_name );
 			delete_transient( 'ti_parrot_agent_token_plain' );
-			delete_option( 'ti_parrot_agent_audit' );
 			delete_transient( 'ti_parrot_agent_rate' );
 			$this->clear_sleep_bird();
 		} else {
@@ -412,7 +411,6 @@ class TI_Parrot {
 			);
 			update_option( $this->_option_name, $account_settings );
 			set_transient( 'ti_parrot_agent_token_plain', $agent_token, self::AGENT_TOKEN_PLAIN_EXPIRY_MINS * MINUTE_IN_SECONDS );
-			delete_option( 'ti_parrot_agent_audit' );
 			// update options variable
 			$this->get_options();
 			$this->init_parrot_kill();
@@ -524,33 +522,6 @@ class TI_Parrot {
 				}
 				?>
 			</p>
-		</div>
-		<?php
-		$this->render_agent_audit();
-	}
-
-	function render_agent_audit() {
-		if ( '' === $this->get_agent_token_hash() ) {
-			return;
-		}
-		$entries = get_option( 'ti_parrot_agent_audit', array() );
-		$format  = sprintf( '%1$s, %2$s', get_option( 'date_format' ), get_option( 'time_format' ) );
-		$offset  = get_option( 'gmt_offset' ) * HOUR_IN_SECONDS;
-		?>
-		<div class="ti-parrot-card ti-parrot-details">
-			<div class="ti-parrot-details-header">
-				<span class="ti-parrot-details-title"><?php esc_html_e( 'Agent access log', 'pirate-parrot' ); ?></span>
-			</div>
-			<?php if ( empty( $entries ) || ! is_array( $entries ) ) : ?>
-				<p><?php esc_html_e( 'The support agent has not accessed the diagnostics endpoint yet.', 'pirate-parrot' ); ?></p>
-			<?php else : ?>
-				<?php foreach ( array_reverse( $entries ) as $entry ) : ?>
-					<div class="ti-parrot-row">
-						<span class="ti-parrot-row-label"><?php echo esc_html( date_i18n( $format, $entry['time'] + $offset ) ); ?></span>
-						<span class="ti-parrot-row-value ti-parrot-mono"><?php echo esc_html( $entry['route'] . ' — ' . $entry['result'] . ( '' !== $entry['ip'] ? ' (' . $entry['ip'] . ')' : '' ) ); ?></span>
-					</div>
-				<?php endforeach; ?>
-			<?php endif; ?>
 		</div>
 		<?php
 	}

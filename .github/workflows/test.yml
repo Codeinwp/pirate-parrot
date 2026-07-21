@@ -20,6 +20,10 @@ jobs:
         php: ['5.4', '5.5', '5.6', '7.0', '7.1', '7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
     steps:
       - uses: actions/checkout@v4
+      - name: Pull PHP image
+        # oldest php-cli images ship in Docker manifest v1 format, which
+        # modern Docker refuses to pull unless explicitly re-enabled
+        run: DOCKER_ENABLE_DEPRECATED_PULL_SCHEMA_1_IMAGE=1 docker pull -q php:${{ matrix.php }}-cli
       - name: php -l every PHP file
         run: |
           docker run --rm -v "$PWD":/app -w /app php:${{ matrix.php }}-cli sh -c '
@@ -36,8 +40,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
         wp: ['latest']
+        include:
+          # current WordPress requires PHP 7.4+; 6.8 is the last line
+          # supporting 7.2/7.3 (composer resolves PHPUnit 8.5 there)
+          - php: '7.2'
+            wp: '6.8'
+          - php: '7.3'
+            wp: '6.8'
     steps:
       - uses: actions/checkout@v4
       - name: Setup PHP

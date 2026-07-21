@@ -121,6 +121,7 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->parrot->kill_bird();
 
 		$this->assertFalse( get_transient( 'ti_parrot_agent_token_plain' ) );
+		$this->assertFalse( get_transient( 'ti_parrot_agent_rate' ) );
 		$this->assertSame( '', $this->parrot->get_agent_token_hash() );
 		$response = $this->request( '/site', $this->agent_token );
 		$this->assertSame( 401, $response->get_status() );
@@ -220,17 +221,6 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		set_transient( 'ti_parrot_agent_rate', TI_Parrot_Agent_API::RATE_LIMIT, 3600 );
 		$response = $this->request( '/manifest', $this->agent_token );
 		$this->assertSame( 429, $response->get_status() );
-	}
-
-	public function test_audit_trail_records_access() {
-		$this->request( '/manifest', $this->agent_token );
-		$this->request( '/site', 'ppa_wrong-token' );
-
-		$entries = get_option( 'ti_parrot_agent_audit' );
-		$this->assertCount( 2, $entries );
-		$this->assertSame( 'ok', $entries[0]['result'] );
-		$this->assertStringContainsString( '/manifest', $entries[0]['route'] );
-		$this->assertSame( 'denied', $entries[1]['result'] );
 	}
 
 	public function test_log_capture_active_during_grant_without_parrot_login() {
