@@ -13,6 +13,7 @@ package.json
 bin
 tests
 phpunit.xml
+docs
 npm-debug.log
 .github
 dist
