@@ -1,0 +1,59 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+      - development
+  pull_request:
+
+jobs:
+  # The plugin ships to unknown customer stacks; the promise is "parse-safe
+  # down to PHP 5.4". The WP test suite can't run there, so the floor is
+  # enforced with a plain parse check inside official php-cli containers.
+  lint:
+    name: Parse check PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['5.4', '5.5', '5.6', '7.0', '7.1', '7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - name: php -l every PHP file
+        run: |
+          docker run --rm -v "$PWD":/app -w /app php:${{ matrix.php }}-cli sh -c '
+            status=0
+            for f in $(find . -path ./node_modules -prune -o -path ./vendor -prune -o -name "*.php" -print); do
+              php -l "$f" > /dev/null || status=1
+            done
+            [ "$status" -eq 0 ] && echo "All files parse on PHP $(php -r "echo PHP_VERSION;")"
+            exit $status'
+
+  phpunit:
+    name: PHPUnit PHP ${{ matrix.php }} / WP ${{ matrix.wp }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        wp: ['latest']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli
+          coverage: none
+          tools: composer:v2
+      - name: Start MySQL
+        run: sudo systemctl start mysql.service
+      - name: Install WordPress test suite
+        run: bash bin/install-wp-tests.sh wordpress_test root root localhost ${{ matrix.wp }}
+      - name: Install PHPUnit
+        run: composer install --no-progress --no-interaction
+      - name: Run tests
+        run: vendor/bin/phpunit
+        env:
+          WP_TESTS_PHPUNIT_POLYFILLS_PATH: ${{ github.workspace }}/vendor/yoast/phpunit-polyfills
