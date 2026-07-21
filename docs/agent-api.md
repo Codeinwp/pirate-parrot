@@ -23,9 +23,10 @@ rate limited (30/hour).
 
 ## Routes
 
-Base: `https://example.com/wp-json/pirate-parrot/v1` (on sites without pretty
-permalinks, `rest_url()` yields the `?rest_route=` form — the "Agent endpoint"
-row on the parrot page always shows the correct base).
+Base: `https://example.com/wp-json/pirate-parrot/v1`. The parrot details card
+shares the site's plain REST base (the "REST API base" row, from `rest_url()`,
+which stays correct on sites without pretty permalinks); the consuming service
+appends `pirate-parrot/v1/...` to it.
 
 | Route | Purpose |
 |---|---|

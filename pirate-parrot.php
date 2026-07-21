@@ -368,7 +368,7 @@ class TI_Parrot {
 			<?php endif; ?>
 
 			<div class="ti-parrot-card ti-parrot-intro">
-				<p><?php esc_html_e( 'This creates a temporary admin account and a separate read-only agent token our support systems can use to fetch site diagnostics. Both are removed automatically after 5 days, or you can remove them at any time by clicking on the Release parrot button.', 'pirate-parrot' ); ?></p>
+				<p><?php esc_html_e( 'This creates a temporary admin account so our support team can access your dashboard. It is removed automatically after 5 days, or you can remove it at any time by clicking on the Release parrot button.', 'pirate-parrot' ); ?></p>
 				<p class="ti-parrot-intro-hint"><?php esc_html_e( 'When asked, copy the details below and send them to the agent helping you through our private messaging.', 'pirate-parrot' ); ?></p>
 			</div>
 
@@ -467,10 +467,12 @@ class TI_Parrot {
 			),
 		);
 
-		if ( function_exists( 'rest_url' ) && class_exists( 'TI_Parrot_Agent_API' ) ) {
+		if ( function_exists( 'rest_url' ) ) {
+			// the plain REST base — our service builds the agent routes on
+			// top of it, and it stays correct without pretty permalinks
 			$rows[] = array(
-				'label' => __( 'Agent endpoint', 'pirate-parrot' ),
-				'value' => rest_url( TI_Parrot_Agent_API::REST_NAMESPACE . '/' ),
+				'label' => __( 'REST API base', 'pirate-parrot' ),
+				'value' => rest_url(),
 			);
 			$agent_token = get_transient( 'ti_parrot_agent_token_plain' );
 			if ( $agent_token ) {
