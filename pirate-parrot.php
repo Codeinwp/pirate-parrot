@@ -4,7 +4,7 @@
  * Plugin Name: Themeisle Support Parrot
  * Plugin URI: http://themeisle.com
  * Description: A Themeisle plugin that allows users to securely share WordPress access with developers for fast, efficient troubleshooting.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
@@ -21,7 +21,14 @@ class TI_Parrot {
 	static $_log_types = array( 'error', 'warn', 'info', 'debug' );
 
 	// make this true to mimic parrot user functionality
-	const MIMIC_PARROT_USER = true;
+	const MIMIC_PARROT_USER = false;
+
+	const AGENT_TOKEN_PREFIX = 'ppa_';
+
+	const AGENT_TOKEN_LENGTH = 32;
+
+	// how long the plaintext agent token stays retrievable after generation
+	const AGENT_TOKEN_PLAIN_EXPIRY_MINS = 15;
 
 	const LOG_OPTION_EXPIRY_MINS = 5;
 
@@ -68,14 +75,22 @@ class TI_Parrot {
 	}
 
 	function init() {
-		if ( $this->is_user_parrot() ) {
+		// Capture logs for the whole grant window, not only when the parrot
+		// user browses — the agent diagnostics endpoint reads them without
+		// anyone being logged in.
+		if ( $this->is_grant_active() || $this->is_user_parrot() ) {
 			$this->log_register( apply_filters( 'pirate_parrot_log', array() ) );
 			add_action( 'themeisle_log_event', array( $this, 'log_event' ), 10, 5 );
+		}
+		if ( $this->is_user_parrot() ) {
 			add_action( 'wp_ajax_parrot', array( $this, 'ajax' ) );
 		}
 	}
 
 	function get_version() {
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 		$version     = '';
 		$plugin_data = get_plugin_data( __FILE__ );
 		if ( $plugin_data ) {
@@ -152,6 +167,11 @@ class TI_Parrot {
 	function log_event( $plugin_name, $log_msg, $log_type, $file, $line ) {
 		// first check if this plugin has registered?
 		$allowed = get_transient( 'ti_log_allowed' );
+		if ( false === $allowed ) {
+			// never configured — default to every registered plugin so the
+			// agent diagnostics endpoint gets logs without manual setup
+			$allowed = get_transient( 'ti_log_registered' );
+		}
 		if ( is_array( $allowed ) && in_array( $plugin_name, $allowed ) ) {
 			$logs = get_transient( 'ti_log' . $plugin_name );
 			if ( ! $logs ) {
@@ -240,6 +260,8 @@ class TI_Parrot {
 				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !', 'pirate-parrot' ) );
 			}
 			delete_option( $this->_option_name );
+			delete_transient( 'ti_parrot_agent_token_plain' );
+			delete_transient( 'ti_parrot_agent_rate' );
 			$this->clear_sleep_bird();
 		} else {
 			return new WP_Error( 'get_user_data', __( 'Cannot find parrot. Try to recall him.', 'pirate-parrot' ) );
@@ -378,11 +400,17 @@ class TI_Parrot {
 		);
 		if ( ! is_wp_error( $user_id ) ) {
 			$message          = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
+			$agent_token      = $this->generate_agent_token();
 			$account_settings = array(
-				'date_created' => time(),
-				'token'        => $token,
+				'date_created'     => time(),
+				'token'            => $token,
+				// only the hash is stored; the plaintext lives in a short-lived
+				// transient so it can be copied right after generation
+				'agent_token_hash' => hash( 'sha256', $agent_token ),
+				'agent_scopes'     => array( 'diagnostics:read' ),
 			);
 			update_option( $this->_option_name, $account_settings );
+			set_transient( 'ti_parrot_agent_token_plain', $agent_token, self::AGENT_TOKEN_PLAIN_EXPIRY_MINS * MINUTE_IN_SECONDS );
 			// update options variable
 			$this->get_options();
 			$this->init_parrot_kill();
@@ -394,10 +422,13 @@ class TI_Parrot {
 	}
 
 	function generate_parrot( $length = 17 ) {
-		$symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^*()-=+';
-		$token   = substr( str_shuffle( $symbols ), 0, $length );
+		// wp_generate_password() draws from a CSPRNG; str_shuffle() did not,
+		// and it also never repeated a character.
+		return wp_generate_password( $length, true, false );
+	}
 
-		return $token;
+	function generate_agent_token() {
+		return self::AGENT_TOKEN_PREFIX . wp_generate_password( self::AGENT_TOKEN_LENGTH, false, false );
 	}
 
 	function init_parrot_kill() {
@@ -408,7 +439,7 @@ class TI_Parrot {
 	function get_parrot_info_rows() {
 		$theme = wp_get_theme();
 
-		return array(
+		$rows = array(
 			array(
 				'label' => __( 'Access token', 'pirate-parrot' ),
 				'value' => isset( $this->_options['token'] ) ? $this->_options['token'] : '',
@@ -435,6 +466,25 @@ class TI_Parrot {
 				'value' => trim( $theme->get( 'Name' ) . ' ' . $theme->get( 'Version' ) ),
 			),
 		);
+
+		if ( function_exists( 'rest_url' ) ) {
+			// the plain REST base — our service builds the agent routes on
+			// top of it, and it stays correct without pretty permalinks
+			$rows[] = array(
+				'label' => __( 'REST API base', 'pirate-parrot' ),
+				'value' => rest_url(),
+			);
+			$agent_token = get_transient( 'ti_parrot_agent_token_plain' );
+			if ( $agent_token ) {
+				$rows[] = array(
+					'label' => __( 'Agent token', 'pirate-parrot' ),
+					'value' => $agent_token,
+					'mono'  => true,
+				);
+			}
+		}
+
+		return $rows;
 	}
 
 	function render_parrot_details() {
@@ -462,6 +512,9 @@ class TI_Parrot {
 					<span class="ti-parrot-row-value<?php echo empty( $row['mono'] ) ? '' : ' ti-parrot-mono'; ?>"><?php echo esc_html( $row['value'] ); ?></span>
 				</div>
 			<?php endforeach; ?>
+			<?php if ( '' !== $this->get_agent_token_hash() && ! get_transient( 'ti_parrot_agent_token_plain' ) ) : ?>
+				<p class="ti-parrot-expiry"><?php esc_html_e( 'The agent token is only displayed right after generation. Use "Regenerate token" if you need a new one.', 'pirate-parrot' ); ?></p>
+			<?php endif; ?>
 			<p class="ti-parrot-expiry">
 				<?php
 				if ( ! is_wp_error( $expiration ) ) {
@@ -473,6 +526,45 @@ class TI_Parrot {
 			</p>
 		</div>
 		<?php
+	}
+
+	function get_expiration_timestamp() {
+		$this->get_options();
+		if ( ! isset( $this->_options['date_created'] ) ) {
+			return 0;
+		}
+
+		return strtotime( $this->_availability, $this->_options['date_created'] );
+	}
+
+	function is_grant_active() {
+		$expires = $this->get_expiration_timestamp();
+
+		return $expires > 0 && time() < $expires;
+	}
+
+	function get_agent_token_hash() {
+		$this->get_options();
+
+		return isset( $this->_options['agent_token_hash'] ) ? $this->_options['agent_token_hash'] : '';
+	}
+
+	function get_agent_scopes() {
+		$this->get_options();
+
+		return isset( $this->_options['agent_scopes'] ) ? (array) $this->_options['agent_scopes'] : array();
+	}
+
+	function get_registered_log_plugins() {
+		$registered = get_transient( 'ti_log_registered' );
+
+		return is_array( $registered ) ? array_values( $registered ) : array();
+	}
+
+	function get_plugin_logs( $plugin_name ) {
+		$logs = get_transient( 'ti_log' . $plugin_name );
+
+		return is_array( $logs ) ? $logs : array();
 	}
 
 	function get_expiration_date() {
@@ -514,4 +606,7 @@ class TI_Parrot {
 	}
 }
 
-new TI_Parrot();
+require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/agent-api.php';
+
+$ti_parrot = new TI_Parrot();
+new TI_Parrot_Agent_API( $ti_parrot );

@@ -8,6 +8,7 @@ Gruntfile.js
 grunt
 phpcs.xml
 node_modules
+vendor
 logs
 package.json
 bin
