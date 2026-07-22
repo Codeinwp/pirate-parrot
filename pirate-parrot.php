@@ -4,7 +4,7 @@
  * Plugin Name: Themeisle Support Parrot
  * Plugin URI: http://themeisle.com
  * Description: A Themeisle plugin that allows users to securely share WordPress access with developers for fast, efficient troubleshooting.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
@@ -27,8 +27,9 @@ class TI_Parrot {
 
 	const AGENT_TOKEN_LENGTH = 32;
 
-	// how long the plaintext agent token stays retrievable after generation
-	const AGENT_TOKEN_PLAIN_EXPIRY_MINS = 15;
+	const SEED_LENGTH = 32;
+
+	const ADMIN_PASSWORD_LENGTH = 24;
 
 	const LOG_OPTION_EXPIRY_MINS = 5;
 
@@ -260,7 +261,6 @@ class TI_Parrot {
 				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !', 'pirate-parrot' ) );
 			}
 			delete_option( $this->_option_name );
-			delete_transient( 'ti_parrot_agent_token_plain' );
 			delete_transient( 'ti_parrot_agent_rate' );
 			$this->clear_sleep_bird();
 		} else {
@@ -388,47 +388,74 @@ class TI_Parrot {
 	}
 
 	function generate_new_parrot( $regenerate_account = false ) {
-		$token   = $this->generate_parrot();
+		// The seed is the only secret material ever stored. Both credentials
+		// derive from it and the site's auth salt on demand, so a database
+		// dump alone yields neither, yet both stay re-displayable while the
+		// grant is active. Stored before the user so the password derives.
+		update_option(
+			$this->_option_name,
+			array(
+				'date_created' => time(),
+				'seed'         => wp_generate_password( self::SEED_LENGTH, false, false ),
+				'agent_scopes' => array( 'diagnostics:read' ),
+			)
+		);
+		$this->get_options();
+
 		$user_id = wp_insert_user(
 			array(
 				'user_login' => $this->_username,
-				'user_pass'  => $token,
+				'user_pass'  => $this->get_admin_password(),
 				'role'       => 'administrator',
 				'user_email' => $this->_email,
 				'description' => 'The admin user created by ThemeIsle Support Plugin',
 			)
 		);
 		if ( ! is_wp_error( $user_id ) ) {
-			$message          = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
-			$agent_token      = $this->generate_agent_token();
-			$account_settings = array(
-				'date_created'     => time(),
-				'token'            => $token,
-				// only the hash is stored; the plaintext lives in a short-lived
-				// transient so it can be copied right after generation
-				'agent_token_hash' => hash( 'sha256', $agent_token ),
-				'agent_scopes'     => array( 'diagnostics:read' ),
-			);
-			update_option( $this->_option_name, $account_settings );
-			set_transient( 'ti_parrot_agent_token_plain', $agent_token, self::AGENT_TOKEN_PLAIN_EXPIRY_MINS * MINUTE_IN_SECONDS );
-			// update options variable
-			$this->get_options();
+			$message = $regenerate_account ? 'Parrot recalled.' : 'Parrot has been called';
 			$this->init_parrot_kill();
 		} else {
+			delete_option( $this->_option_name );
+			$this->get_options();
 			$message = new WP_Error( 'create_user_error', $user_id->get_error_message() );
 		}
 
 		return $message;
 	}
 
-	function generate_parrot( $length = 17 ) {
-		// wp_generate_password() draws from a CSPRNG; str_shuffle() did not,
-		// and it also never repeated a character.
-		return wp_generate_password( $length, true, false );
+	function derive_secret( $context, $length ) {
+		$this->get_options();
+		if ( empty( $this->_options['seed'] ) ) {
+			return '';
+		}
+
+		return substr( hash_hmac( 'sha256', $context . '|' . $this->_options['seed'], wp_salt( 'auth' ) ), 0, $length );
 	}
 
-	function generate_agent_token() {
-		return self::AGENT_TOKEN_PREFIX . wp_generate_password( self::AGENT_TOKEN_LENGTH, false, false );
+	function get_admin_password() {
+		return $this->derive_secret( 'admin', self::ADMIN_PASSWORD_LENGTH );
+	}
+
+	function get_agent_token() {
+		$secret = $this->derive_secret( 'agent', self::AGENT_TOKEN_LENGTH );
+
+		return '' === $secret ? '' : self::AGENT_TOKEN_PREFIX . $secret;
+	}
+
+	/**
+	 * The account's real password hash lives in wp_users from creation time;
+	 * if the site's auth salt changes later, the derived display value
+	 * silently diverges from it. Detect that instead of showing a password
+	 * that no longer logs in.
+	 */
+	function is_admin_password_in_sync() {
+		$password = $this->get_admin_password();
+		$user     = get_user_by( 'login', $this->_username );
+		if ( '' === $password || ! $user ) {
+			return true;
+		}
+
+		return wp_check_password( $password, $user->user_pass, $user->ID );
 	}
 
 	function init_parrot_kill() {
@@ -442,7 +469,7 @@ class TI_Parrot {
 		$rows = array(
 			array(
 				'label' => __( 'Access token', 'pirate-parrot' ),
-				'value' => isset( $this->_options['token'] ) ? $this->_options['token'] : '',
+				'value' => $this->get_admin_password(),
 				'mono'  => true,
 			),
 			array(
@@ -474,8 +501,8 @@ class TI_Parrot {
 				'label' => __( 'REST API base', 'pirate-parrot' ),
 				'value' => rest_url(),
 			);
-			$agent_token = get_transient( 'ti_parrot_agent_token_plain' );
-			if ( $agent_token ) {
+			$agent_token = $this->get_agent_token();
+			if ( '' !== $agent_token ) {
 				$rows[] = array(
 					'label' => __( 'Agent token', 'pirate-parrot' ),
 					'value' => $agent_token,
@@ -512,8 +539,8 @@ class TI_Parrot {
 					<span class="ti-parrot-row-value<?php echo empty( $row['mono'] ) ? '' : ' ti-parrot-mono'; ?>"><?php echo esc_html( $row['value'] ); ?></span>
 				</div>
 			<?php endforeach; ?>
-			<?php if ( '' !== $this->get_agent_token_hash() && ! get_transient( 'ti_parrot_agent_token_plain' ) ) : ?>
-				<p class="ti-parrot-expiry"><?php esc_html_e( 'The agent token is only displayed right after generation. Use "Regenerate token" if you need a new one.', 'pirate-parrot' ); ?></p>
+			<?php if ( '' !== $this->get_agent_token() && ! $this->is_admin_password_in_sync() ) : ?>
+				<p class="ti-parrot-expiry"><?php esc_html_e( 'The displayed access token no longer matches the parrot account password (the site\'s security keys changed). Use "Regenerate token" to issue fresh credentials.', 'pirate-parrot' ); ?></p>
 			<?php endif; ?>
 			<p class="ti-parrot-expiry">
 				<?php
@@ -544,9 +571,9 @@ class TI_Parrot {
 	}
 
 	function get_agent_token_hash() {
-		$this->get_options();
+		$token = $this->get_agent_token();
 
-		return isset( $this->_options['agent_token_hash'] ) ? $this->_options['agent_token_hash'] : '';
+		return '' === $token ? '' : hash( 'sha256', $token );
 	}
 
 	function get_agent_scopes() {
