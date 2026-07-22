@@ -92,8 +92,10 @@ class Test_Agent_Api extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'Access active', $page );
 		$this->assertStringContainsString( 'Details to share with support', $page );
-		$this->assertStringContainsString( $this->agent_token, $page );
-		$this->assertStringContainsString( $this->parrot->get_admin_password(), $page );
+		// the page escapes the row values, so assert the escaped forms — the
+		// password alphabet includes & and other HTML-special characters
+		$this->assertStringContainsString( esc_html( $this->agent_token ), $page );
+		$this->assertStringContainsString( esc_html( $this->parrot->get_admin_password() ), $page );
 	}
 
 	public function test_credentials_are_redisplayable_across_requests() {
