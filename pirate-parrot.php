@@ -261,7 +261,6 @@ class TI_Parrot {
 				return new WP_Error( 'delete_user', __( 'Parrot has left the cage !', 'pirate-parrot' ) );
 			}
 			delete_option( $this->_option_name );
-			delete_transient( 'ti_parrot_agent_token_plain' );
 			delete_transient( 'ti_parrot_agent_rate' );
 			$this->clear_sleep_bird();
 		} else {
@@ -467,16 +466,10 @@ class TI_Parrot {
 	function get_parrot_info_rows() {
 		$theme = wp_get_theme();
 
-		$admin_password = $this->get_admin_password();
-		if ( '' === $admin_password && isset( $this->_options['token'] ) ) {
-			// grant from a pre-1.5.0 version that stored the password itself
-			$admin_password = $this->_options['token'];
-		}
-
 		$rows = array(
 			array(
 				'label' => __( 'Access token', 'pirate-parrot' ),
-				'value' => $admin_password,
+				'value' => $this->get_admin_password(),
 				'mono'  => true,
 			),
 			array(
@@ -546,9 +539,6 @@ class TI_Parrot {
 					<span class="ti-parrot-row-value<?php echo empty( $row['mono'] ) ? '' : ' ti-parrot-mono'; ?>"><?php echo esc_html( $row['value'] ); ?></span>
 				</div>
 			<?php endforeach; ?>
-			<?php if ( '' === $this->get_agent_token() && '' !== $this->get_agent_token_hash() ) : ?>
-				<p class="ti-parrot-expiry"><?php esc_html_e( 'This parrot was created by an older plugin version, so its agent token cannot be displayed again. Use "Regenerate token" to issue fresh credentials.', 'pirate-parrot' ); ?></p>
-			<?php endif; ?>
 			<?php if ( '' !== $this->get_agent_token() && ! $this->is_admin_password_in_sync() ) : ?>
 				<p class="ti-parrot-expiry"><?php esc_html_e( 'The displayed access token no longer matches the parrot account password (the site\'s security keys changed). Use "Regenerate token" to issue fresh credentials.', 'pirate-parrot' ); ?></p>
 			<?php endif; ?>
@@ -582,12 +572,8 @@ class TI_Parrot {
 
 	function get_agent_token_hash() {
 		$token = $this->get_agent_token();
-		if ( '' !== $token ) {
-			return hash( 'sha256', $token );
-		}
 
-		// grant from a pre-1.5.0 version that stored the token's hash
-		return isset( $this->_options['agent_token_hash'] ) ? $this->_options['agent_token_hash'] : '';
+		return '' === $token ? '' : hash( 'sha256', $token );
 	}
 
 	function get_agent_scopes() {

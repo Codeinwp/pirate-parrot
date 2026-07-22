@@ -113,23 +113,6 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertSame( 200, $this->request( '/manifest', $this->parrot->get_agent_token() )->get_status() );
 	}
 
-	public function test_legacy_pre_seed_grant_still_authenticates() {
-		$legacy_token = 'ppa_legacyLegacyLegacyLegacy1234';
-		update_option(
-			'ti_parrot_options',
-			array(
-				'date_created'     => time(),
-				'token'            => 'legacy-admin-pass',
-				'agent_token_hash' => hash( 'sha256', $legacy_token ),
-				'agent_scopes'     => array( 'diagnostics:read' ),
-			)
-		);
-
-		$this->assertSame( '', $this->parrot->get_agent_token() );
-		$this->assertSame( 200, $this->request( '/manifest', $legacy_token )->get_status() );
-		$this->assertSame( 401, $this->request( '/manifest', $this->agent_token )->get_status() );
-	}
-
 	public function test_request_without_token_is_rejected() {
 		$response = $this->request( '/manifest' );
 		$this->assertSame( 401, $response->get_status() );
