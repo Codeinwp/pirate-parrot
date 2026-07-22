@@ -21,4 +21,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.S3_DOWNLOADS_AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
       - name: Upload pirate-parrot.zip to the bucket root
-        run: aws s3 cp artifact/pirate-parrot.zip "s3://${{ secrets.AWS_S3_BUCKET_DOWNLOADS }}/pirate-parrot.zip" --acl public-read
+        # the AWS_S3_BUCKET_DOWNLOADS secret points at a different bucket;
+        # the plugin is served from https://verti-utils.s3.amazonaws.com/pirate-parrot.zip
+        run: aws s3 cp artifact/pirate-parrot.zip "s3://verti-utils/pirate-parrot.zip" --acl public-read
