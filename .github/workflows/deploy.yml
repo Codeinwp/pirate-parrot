@@ -8,19 +8,17 @@ jobs:
     name: Deploy to S3
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
       - name: Build & create dist/artifact
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           npm run dist
-      - name: Upload Latest Version to S3
-        uses: jakejarvis/s3-sync-action@master
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          args: --acl public-read --follow-symlinks --delete
-        env:
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET_DOWNLOADS }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.S3_DOWNLOADS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DOWNLOADS_AWS_SECRET_ACCESS_KEY }}
-          SOURCE_DIR: "artifact" # optional: defaults to entire repository
-          DEST_DIR: /pirate-parrot.zip
+          aws-access-key-id: ${{ secrets.S3_DOWNLOADS_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.S3_DOWNLOADS_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Upload pirate-parrot.zip to the bucket root
+        run: aws s3 cp artifact/pirate-parrot.zip "s3://${{ secrets.AWS_S3_BUCKET_DOWNLOADS }}/pirate-parrot.zip" --acl public-read
