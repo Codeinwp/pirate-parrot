@@ -433,7 +433,21 @@ class TI_Parrot {
 	}
 
 	function get_admin_password() {
-		return $this->derive_secret( 'admin', self::ADMIN_PASSWORD_LENGTH );
+		$this->get_options();
+		if ( empty( $this->_options['seed'] ) ) {
+			return '';
+		}
+		// map the raw digest onto the full password alphabet — a hex-only
+		// password looks weak and some hosts enforce mixed character classes
+		$alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
+		$digest   = hash_hmac( 'sha256', 'admin|' . $this->_options['seed'], wp_salt( 'auth' ), true );
+		$size     = strlen( $alphabet );
+		$password = '';
+		for ( $i = 0; $i < self::ADMIN_PASSWORD_LENGTH; $i++ ) {
+			$password .= $alphabet[ ord( $digest[ $i ] ) % $size ];
+		}
+
+		return $password;
 	}
 
 	function get_agent_token() {
