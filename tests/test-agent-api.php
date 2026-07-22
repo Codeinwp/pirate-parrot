@@ -27,7 +27,7 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		self::$provider_calls = 0;
 		$this->parrot         = new TI_Parrot();
 		$this->parrot->generate_new_parrot();
-		$this->agent_token = get_transient( 'ti_parrot_agent_token_plain' );
+		$this->agent_token = $this->parrot->get_agent_token();
 	}
 
 	private function request( $route, $token = null, $params = array() ) {
@@ -73,9 +73,61 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertTrue( $this->parrot->is_grant_active() );
 	}
 
-	public function test_admin_password_is_not_predictable() {
-		$this->assertNotSame( $this->parrot->generate_parrot(), $this->parrot->generate_parrot() );
-		$this->assertSame( 17, strlen( $this->parrot->generate_parrot() ) );
+	public function test_no_credential_material_is_stored() {
+		$options = get_option( 'ti_parrot_options' );
+
+		$this->assertSame( array( 'date_created', 'seed', 'agent_scopes' ), array_keys( $options ) );
+		$this->assertArrayNotHasKey( 'token', $options );
+		$this->assertArrayNotHasKey( 'agent_token_hash', $options );
+		$this->assertStringNotContainsString( $this->agent_token, wp_json_encode( $options ) );
+		$this->assertStringNotContainsString( $this->parrot->get_admin_password(), wp_json_encode( $options ) );
+	}
+
+	public function test_credentials_are_redisplayable_across_requests() {
+		$fresh = new TI_Parrot();
+
+		$this->assertSame( $this->agent_token, $fresh->get_agent_token() );
+		$this->assertSame( $this->parrot->get_admin_password(), $fresh->get_admin_password() );
+	}
+
+	public function test_admin_password_derives_and_matches_the_account() {
+		$password = $this->parrot->get_admin_password();
+		$user     = get_user_by( 'login', 'ti_parrot' );
+
+		$this->assertSame( TI_Parrot::ADMIN_PASSWORD_LENGTH, strlen( $password ) );
+		$this->assertInstanceOf( WP_User::class, $user );
+		$this->assertTrue( wp_check_password( $password, $user->user_pass, $user->ID ) );
+		$this->assertTrue( $this->parrot->is_admin_password_in_sync() );
+	}
+
+	public function test_regenerate_rotates_both_credentials() {
+		$old_token    = $this->agent_token;
+		$old_password = $this->parrot->get_admin_password();
+
+		$this->parrot->kill_bird();
+		$this->parrot->generate_new_parrot( true );
+
+		$this->assertNotSame( $old_token, $this->parrot->get_agent_token() );
+		$this->assertNotSame( $old_password, $this->parrot->get_admin_password() );
+		$this->assertSame( 401, $this->request( '/manifest', $old_token )->get_status() );
+		$this->assertSame( 200, $this->request( '/manifest', $this->parrot->get_agent_token() )->get_status() );
+	}
+
+	public function test_legacy_pre_seed_grant_still_authenticates() {
+		$legacy_token = 'ppa_legacyLegacyLegacyLegacy1234';
+		update_option(
+			'ti_parrot_options',
+			array(
+				'date_created'     => time(),
+				'token'            => 'legacy-admin-pass',
+				'agent_token_hash' => hash( 'sha256', $legacy_token ),
+				'agent_scopes'     => array( 'diagnostics:read' ),
+			)
+		);
+
+		$this->assertSame( '', $this->parrot->get_agent_token() );
+		$this->assertSame( 200, $this->request( '/manifest', $legacy_token )->get_status() );
+		$this->assertSame( 401, $this->request( '/manifest', $this->agent_token )->get_status() );
 	}
 
 	public function test_request_without_token_is_rejected() {
@@ -120,8 +172,8 @@ class Test_Agent_Api extends WP_UnitTestCase {
 	public function test_revocation_invalidates_token() {
 		$this->parrot->kill_bird();
 
-		$this->assertFalse( get_transient( 'ti_parrot_agent_token_plain' ) );
 		$this->assertFalse( get_transient( 'ti_parrot_agent_rate' ) );
+		$this->assertSame( '', $this->parrot->get_agent_token() );
 		$this->assertSame( '', $this->parrot->get_agent_token_hash() );
 		$response = $this->request( '/site', $this->agent_token );
 		$this->assertSame( 401, $response->get_status() );
