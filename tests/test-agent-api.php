@@ -83,6 +83,19 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( $this->parrot->get_admin_password(), wp_json_encode( $options ) );
 	}
 
+	public function test_parrot_page_shows_details_after_generation() {
+		require_once ABSPATH . 'wp-admin/includes/template.php';
+
+		ob_start();
+		$this->parrot->ti_parrot_cage();
+		$page = ob_get_clean();
+
+		$this->assertStringContainsString( 'Access active', $page );
+		$this->assertStringContainsString( 'Details to share with support', $page );
+		$this->assertStringContainsString( $this->agent_token, $page );
+		$this->assertStringContainsString( $this->parrot->get_admin_password(), $page );
+	}
+
 	public function test_credentials_are_redisplayable_across_requests() {
 		$fresh = new TI_Parrot();
 
