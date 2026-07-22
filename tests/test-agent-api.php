@@ -92,8 +92,10 @@ class Test_Agent_Api extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'Access active', $page );
 		$this->assertStringContainsString( 'Details to share with support', $page );
-		$this->assertStringContainsString( $this->agent_token, $page );
-		$this->assertStringContainsString( $this->parrot->get_admin_password(), $page );
+		// the page escapes the row values, so assert the escaped forms — the
+		// password alphabet includes & and other HTML-special characters
+		$this->assertStringContainsString( esc_html( $this->agent_token ), $page );
+		$this->assertStringContainsString( esc_html( $this->parrot->get_admin_password() ), $page );
 	}
 
 	public function test_credentials_are_redisplayable_across_requests() {
@@ -108,6 +110,9 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$user     = get_user_by( 'login', 'ti_parrot' );
 
 		$this->assertSame( TI_Parrot::ADMIN_PASSWORD_LENGTH, strlen( $password ) );
+		$this->assertMatchesRegularExpression( '/^[a-zA-Z0-9!@#$%^&*()\-_=+]+$/', $password );
+		// drawn from the full alphabet, not the digest's hex form
+		$this->assertMatchesRegularExpression( '/[^a-f0-9]/', $password );
 		$this->assertInstanceOf( 'WP_User', $user );
 		$this->assertTrue( wp_check_password( $password, $user->user_pass, $user->ID ) );
 		$this->assertTrue( $this->parrot->is_admin_password_in_sync() );
