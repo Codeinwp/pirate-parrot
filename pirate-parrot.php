@@ -335,7 +335,7 @@ class TI_Parrot {
 			// delete the account if it's expired
 			$this->kill_sleep_bird();
 		}
-		$is_active     = $account_exists && isset( $this->_options['token'] );
+		$is_active     = $account_exists && ! empty( $this->_options['seed'] );
 		$primary_label = $account_exists ? __( 'Regenerate token', 'pirate-parrot' ) : __( 'Call the parrot', 'pirate-parrot' );
 		?>
 		<div class="wrap ti-parrot-wrap">
