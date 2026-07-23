@@ -47,6 +47,7 @@ class TI_Parrot_Agent_API {
 			'/products'                       => 'get_products_index',
 			'/products/(?P<slug>[a-z0-9_-]+)' => 'get_product',
 			'/logs'                           => 'get_logs',
+			'/crashes'                        => 'get_crashes',
 		);
 		foreach ( $routes as $route => $callback ) {
 			register_rest_route(
@@ -108,6 +109,11 @@ class TI_Parrot_Agent_API {
 				'label'   => __( 'Plugin logs', 'pirate-parrot' ),
 				'route'   => '/logs',
 				'plugins' => $this->parrot->get_registered_log_plugins(),
+			),
+			array(
+				'slug'  => 'crashes',
+				'label' => __( 'Product crash reports', 'pirate-parrot' ),
+				'route' => '/crashes',
 			),
 		);
 		foreach ( $this->get_providers() as $slug => $provider ) {
@@ -272,6 +278,43 @@ class TI_Parrot_Agent_API {
 				'entries'  => array_slice( $logs, ( $page - 1 ) * $per_page, $per_page ),
 			)
 		);
+	}
+
+	/**
+	 * Crash summaries captured by the ThemeIsle SDK crash reporter, which
+	 * stores per-product `{product_key}_crash_data` options (reports already
+	 * redacted and size-capped client-side by the SDK). Reads the options
+	 * directly — no SDK classes involved — so sites without the SDK, without
+	 * crash-capable product versions, or without any recorded crash all get
+	 * an empty product list, never an error.
+	 */
+	function get_crashes( $request ) {
+		global $wpdb;
+
+		$suffix   = '_crash_data';
+		$products = array();
+		$names    = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name",
+				'%' . $wpdb->esc_like( $suffix )
+			)
+		);
+
+		foreach ( (array) $names as $name ) {
+			$data = get_option( $name, array() );
+			if ( ! is_array( $data ) ) {
+				continue;
+			}
+			// "product", not "product_key" — the redaction backstop blanks
+			// any key name matching /key/
+			$products[] = array(
+				'product' => substr( $name, 0, 0 - strlen( $suffix ) ),
+				'reports' => isset( $data['reports'] ) && is_array( $data['reports'] ) ? array_values( $data['reports'] ) : array(),
+				'meta'    => isset( $data['meta'] ) && is_array( $data['meta'] ) ? $data['meta'] : array(),
+			);
+		}
+
+		return $this->respond( array( 'products' => $products ) );
 	}
 
 	function respond( $data ) {
