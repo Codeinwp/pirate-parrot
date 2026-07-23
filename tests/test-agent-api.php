@@ -198,6 +198,16 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertSame( array(), $products[0]['reports'] );
 	}
 
+	public function test_crashes_section_bounds_the_option_scan() {
+		for ( $i = 1; $i <= TI_Parrot_Agent_API::MAX_CRASH_PRODUCTS + 5; $i++ ) {
+			update_option( sprintf( 'product%02d_crash_data', $i ), array( 'reports' => array(), 'meta' => array() ) );
+		}
+
+		$products = $this->request( '/crashes', $this->agent_token )->get_data()['products'];
+
+		$this->assertCount( TI_Parrot_Agent_API::MAX_CRASH_PRODUCTS, $products );
+	}
+
 	public function test_x_parrot_token_header_fallback() {
 		$request = new WP_REST_Request( 'GET', '/' . TI_Parrot_Agent_API::REST_NAMESPACE . '/manifest' );
 		$request->set_header( 'X-Parrot-Token', $this->agent_token );

@@ -28,6 +28,9 @@ class TI_Parrot_Agent_API {
 
 	const RATE_WINDOW = 3600;
 
+	// more matching options than any real fleet of products would create
+	const MAX_CRASH_PRODUCTS = 20;
+
 	private $parrot;
 
 	function __construct( $parrot ) {
@@ -295,8 +298,9 @@ class TI_Parrot_Agent_API {
 		$products = array();
 		$names    = $wpdb->get_col(
 			$wpdb->prepare(
-				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name",
-				'%' . $wpdb->esc_like( $suffix )
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s ORDER BY option_name LIMIT %d",
+				'%' . $wpdb->esc_like( $suffix ),
+				self::MAX_CRASH_PRODUCTS
 			)
 		);
 
