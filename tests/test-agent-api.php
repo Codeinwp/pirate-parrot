@@ -151,6 +151,61 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$slugs = wp_list_pluck( $data['sections'], 'slug' );
 		$this->assertContains( 'site', $slugs );
 		$this->assertContains( 'logs', $slugs );
+		$this->assertContains( 'crashes', $slugs );
+	}
+
+	public function test_crashes_section_is_empty_without_crash_data() {
+		$response = $this->request( '/crashes', $this->agent_token );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( array( 'products' => array() ), $response->get_data() );
+	}
+
+	public function test_crashes_section_lists_sdk_crash_data_and_skips_malformed() {
+		update_option(
+			'neve_crash_data',
+			array(
+				'reports' => array(
+					'abc123' => array(
+						'fingerprint'     => 'abc123',
+						'event_type'      => 'fatal_error',
+						'message'         => 'Call to undefined function neve_missing()',
+						'file'            => 'product:inc/broken.php',
+						'line'            => 42,
+						'request_context' => 'frontend',
+						'product_version' => '4.2.3',
+						'count'           => 7,
+					),
+				),
+				'meta'    => array( 'dropped' => 0 ),
+			)
+		);
+		// shape written by something else entirely — must be skipped, not fatal
+		update_option( 'rogue_crash_data', 'not-an-array' );
+		// SDK option present but empty/partial — listed with normalized shape
+		update_option( 'hestia_crash_data', array( 'meta' => array() ) );
+
+		$response = $this->request( '/crashes', $this->agent_token );
+		$this->assertSame( 200, $response->get_status() );
+
+		$products = $response->get_data()['products'];
+		$this->assertSame( array( 'hestia', 'neve' ), wp_list_pluck( $products, 'product' ) );
+
+		$neve = $products[1];
+		$this->assertSame( 'fatal_error', $neve['reports'][0]['event_type'] );
+		$this->assertSame( 42, $neve['reports'][0]['line'] );
+		$this->assertSame( array( 'dropped' => 0 ), $neve['meta'] );
+		$this->assertSame( array(), $products[0]['reports'] );
+	}
+
+	public function test_crashes_section_bounds_the_option_scan() {
+		for ( $i = 1; $i <= TI_Parrot_Agent_API::MAX_CRASH_PRODUCTS + 5; $i++ ) {
+			update_option( sprintf( 'product%02d_crash_data', $i ), array( 'reports' => array(), 'meta' => array() ) );
+		}
+
+		$products = $this->request( '/crashes', $this->agent_token )->get_data()['products'];
+
+		$this->assertCount( TI_Parrot_Agent_API::MAX_CRASH_PRODUCTS, $products );
 	}
 
 	public function test_x_parrot_token_header_fallback() {
