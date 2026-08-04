@@ -264,6 +264,126 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertSame( '9.9.9', $response->get_data()['data']['version'] );
 	}
 
+	public function test_product_settings_absent_until_the_product_stores_something() {
+		$index = $this->request( '/products', $this->agent_token )->get_data()['products'];
+		$this->assertSame( array(), wp_list_pluck( $index, 'slug' ) );
+		$this->assertSame( 404, $this->request( '/products/optimole-wp', $this->agent_token )->get_status() );
+	}
+
+	public function test_product_settings_read_allowlisted_keys_only() {
+		update_option(
+			'optml_settings',
+			array(
+				'api_key'      => 'super-secret-optimole-key',
+				'service_data' => array( 'cdn_key' => 'nope', 'whitelist' => array( 'example.com' ) ),
+				'cdn'          => 'enabled',
+				'quality'      => 'auto',
+				'offload_media' => 'disabled',
+			)
+		);
+
+		$response = $this->request( '/products/optimole-wp', $this->agent_token );
+		$this->assertSame( 200, $response->get_status() );
+
+		$settings = $response->get_data()['settings']['options']['optml_settings'];
+		$this->assertSame( 'enabled', $settings['cdn'] );
+		$this->assertSame( 'auto', $settings['quality'] );
+		// never read, so they cannot even reach the redaction backstop
+		$this->assertArrayNotHasKey( 'api_key', $settings );
+		$this->assertArrayNotHasKey( 'service_data', $settings );
+		$this->assertStringNotContainsString( 'super-secret-optimole-key', wp_json_encode( $response->get_data() ) );
+
+		$index = $this->request( '/products', $this->agent_token )->get_data()['products'];
+		$this->assertContains( 'optimole-wp', wp_list_pluck( $index, 'slug' ) );
+	}
+
+	public function test_product_settings_exclude_license_keys_and_audited_leaks() {
+		update_option( 'tweet_old_post_pro_license_data', array( 'license' => 'valid', 'expires' => '2027-01-01', 'key' => 'LICENSE-KEY-1234' ) );
+		// the ROP log buffer carries raw API responses incl. Bluesky JWTs
+		update_option( 'rop_logs', array( array( 'message' => 'accessJwt: eyJhbGciOi.SECRETJWT' ) ) );
+		// feedzy's log block holds the customer's error-report address
+		update_option( 'feedzy-settings', array( 'general' => array( 'rss-feeds' => 1 ), 'logs' => array( 'email' => 'owner@example.com' ) ) );
+
+		$rop    = $this->request( '/products/tweet-old-post', $this->agent_token )->get_data();
+		$feedzy = $this->request( '/products/feedzy-rss-feeds', $this->agent_token )->get_data();
+
+		$rop_json    = wp_json_encode( $rop );
+		$feedzy_json = wp_json_encode( $feedzy );
+		$this->assertStringNotContainsString( 'LICENSE-KEY-1234', $rop_json );
+		$this->assertStringNotContainsString( 'SECRETJWT', $rop_json );
+		$this->assertStringNotContainsString( 'rop_logs', $rop_json );
+		$this->assertSame( 'valid', $rop['settings']['options']['tweet_old_post_pro_license_data']['license'] );
+		$this->assertStringNotContainsString( 'owner@example.com', $feedzy_json );
+		$this->assertArrayHasKey( 'general', $feedzy['settings']['options']['feedzy-settings'] );
+	}
+
+	public function test_product_settings_support_dot_paths_and_record_lists() {
+		update_option(
+			'wpmm_settings',
+			array(
+				'general' => array( 'status' => 1, 'exclude' => array( '/secret-path' ) ),
+				'design'  => array( 'page_id' => 12, 'other_custom_css' => str_repeat( 'a', 500 ) ),
+			)
+		);
+		update_option(
+			'themeisle_webhooks_options',
+			array(
+				array( 'id' => 'wh1', 'name' => 'Zapier', 'method' => 'POST', 'url' => 'https://hooks.example.com/s3cr3t', 'headers' => array( 'X-Auth' => 'nope' ) ),
+			)
+		);
+
+		$wpmm  = $this->request( '/products/wp-maintenance-mode', $this->agent_token )->get_data();
+		$otter = $this->request( '/products/otter-blocks', $this->agent_token )->get_data();
+
+		$settings = $wpmm['settings']['options']['wpmm_settings'];
+		$this->assertSame( 1, $settings['general.status'] );
+		$this->assertSame( 12, $settings['design.page_id'] );
+		$this->assertArrayNotHasKey( 'general.exclude', $settings );
+		$this->assertStringNotContainsString( '/secret-path', wp_json_encode( $wpmm ) );
+
+		$hook = $otter['settings']['options']['themeisle_webhooks_options'][0];
+		$this->assertSame( array( 'id' => 'wh1', 'name' => 'Zapier', 'method' => 'POST' ), $hook );
+		$this->assertStringNotContainsString( 's3cr3t', wp_json_encode( $otter ) );
+	}
+
+	public function test_product_settings_trim_long_values_and_theme_mod_names() {
+		update_option( 'visualizer_global_settings', array( 'blob' => str_repeat( 'x', 900 ), 'mode' => 'chart' ) );
+		update_option( 'theme_mods_neve', array( 'hfg_header_layout_v2' => array( 'huge' => 'json' ), 'background_color' => '#fff' ) );
+		update_option( 'neve_logger_flag', 'yes' );
+
+		$visualizer = $this->request( '/products/visualizer', $this->agent_token )->get_data();
+		$blob       = $visualizer['settings']['options']['visualizer_global_settings']['blob'];
+		$this->assertStringContainsString( '[trimmed, 900 chars]', $blob );
+		$this->assertLessThan( 300, strlen( $blob ) );
+
+		$neve = $this->request( '/products/neve', $this->agent_token )->get_data();
+		// mod NAMES only — the values are the full customizer state
+		$this->assertSame( array( 'background_color', 'hfg_header_layout_v2' ), $neve['settings']['customizer_settings_set'] );
+		$this->assertStringNotContainsString( 'huge', wp_json_encode( $neve ) );
+	}
+
+	public function test_product_settings_and_registered_provider_share_one_section() {
+		update_option( 'visualizer_logger_flag', 'yes' );
+		add_filter(
+			'pirate_parrot_register_diagnostics',
+			array( 'Test_Agent_Api', 'register_visualizer_provider' )
+		);
+
+		$data = $this->request( '/products/visualizer', $this->agent_token )->get_data();
+
+		$this->assertSame( 'yes', $data['settings']['options']['visualizer_logger_flag'] );
+		$this->assertSame( '9.9.9', $data['data']['version'] );
+	}
+
+	public static function register_visualizer_provider( $providers ) {
+		$providers['visualizer'] = array(
+			'label'    => 'Visualizer',
+			'callback' => array( 'Test_Agent_Api', 'sample_provider' ),
+		);
+
+		return $providers;
+	}
+
 	public function test_unknown_product_returns_404() {
 		$response = $this->request( '/products/nope', $this->agent_token );
 		$this->assertSame( 404, $response->get_status() );

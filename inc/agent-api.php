@@ -119,10 +119,10 @@ class TI_Parrot_Agent_API {
 				'route' => '/crashes',
 			),
 		);
-		foreach ( $this->get_providers() as $slug => $provider ) {
+		foreach ( $this->get_product_sections() as $slug => $label ) {
 			$sections[] = array(
 				'slug'  => $slug,
-				'label' => $provider['label'],
+				'label' => $label,
 				'route' => '/products/' . $slug,
 			);
 		}
@@ -208,12 +208,29 @@ class TI_Parrot_Agent_API {
 		return $valid;
 	}
 
+	/**
+	 * Every product section available on this site: the slugs whose
+	 * settings the plugin can read itself, plus filter-registered
+	 * providers. Both answer under /products/{slug}.
+	 *
+	 * @return array Slug => label.
+	 */
+	function get_product_sections() {
+		$sections = TI_Parrot_Product_Settings::available();
+		foreach ( $this->get_providers() as $slug => $provider ) {
+			$sections[ $slug ] = $provider['label'];
+		}
+		ksort( $sections );
+
+		return $sections;
+	}
+
 	function get_products_index( $request ) {
 		$index = array();
-		foreach ( $this->get_providers() as $slug => $provider ) {
+		foreach ( $this->get_product_sections() as $slug => $label ) {
 			$index[] = array(
 				'slug'  => $slug,
-				'label' => $provider['label'],
+				'label' => $label,
 				'route' => '/products/' . $slug,
 			);
 		}
@@ -224,27 +241,36 @@ class TI_Parrot_Agent_API {
 	function get_product( $request ) {
 		$slug      = sanitize_key( $request['slug'] );
 		$providers = $this->get_providers();
-		if ( ! isset( $providers[ $slug ] ) ) {
-			return new WP_Error( 'pp_unknown_section', __( 'No diagnostics provider registered under this slug.', 'pirate-parrot' ), array( 'status' => 404 ) );
-		}
-		if ( ! is_callable( $providers[ $slug ]['callback'] ) ) {
-			return new WP_Error( 'pp_provider_error', __( 'The diagnostics provider for this product is broken.', 'pirate-parrot' ), array( 'status' => 500 ) );
-		}
-		try {
-			$data = call_user_func( $providers[ $slug ]['callback'] );
-		} catch ( Exception $e ) {
-			$data = new WP_Error( 'pp_provider_exception', $e->getMessage() );
-		}
-		if ( is_wp_error( $data ) ) {
-			return new WP_Error( 'pp_provider_error', __( 'The diagnostics provider for this product failed.', 'pirate-parrot' ), array( 'status' => 500 ) );
+		$settings  = TI_Parrot_Product_Settings::collect( $slug );
+
+		if ( null === $settings && ! isset( $providers[ $slug ] ) ) {
+			return new WP_Error( 'pp_unknown_section', __( 'No diagnostics available under this slug.', 'pirate-parrot' ), array( 'status' => 404 ) );
 		}
 
-		return $this->respond(
-			array(
-				'slug' => $slug,
-				'data' => $data,
-			)
-		);
+		$response = array( 'slug' => $slug );
+
+		if ( null !== $settings ) {
+			// read from wp_options with core functions only; allowlisted
+			// per product, credentials and blobs excluded at the source
+			$response['settings'] = $settings;
+		}
+
+		if ( isset( $providers[ $slug ] ) ) {
+			if ( ! is_callable( $providers[ $slug ]['callback'] ) ) {
+				return new WP_Error( 'pp_provider_error', __( 'The diagnostics provider for this product is broken.', 'pirate-parrot' ), array( 'status' => 500 ) );
+			}
+			try {
+				$data = call_user_func( $providers[ $slug ]['callback'] );
+			} catch ( Exception $e ) {
+				$data = new WP_Error( 'pp_provider_exception', $e->getMessage() );
+			}
+			if ( is_wp_error( $data ) ) {
+				return new WP_Error( 'pp_provider_error', __( 'The diagnostics provider for this product failed.', 'pirate-parrot' ), array( 'status' => 500 ) );
+			}
+			$response['data'] = $data;
+		}
+
+		return $this->respond( $response );
 	}
 
 	function get_logs( $request ) {
