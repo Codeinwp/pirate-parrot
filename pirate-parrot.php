@@ -648,6 +648,7 @@ class TI_Parrot {
 }
 
 require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/product-settings.php';
+require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/integrity.php';
 require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/agent-api.php';
 
 $ti_parrot = new TI_Parrot();

@@ -19,7 +19,7 @@ class TI_Parrot_Agent_API {
 
 	const REST_NAMESPACE = 'pirate-parrot/v1';
 
-	const SCHEMA_VERSION = '1.0';
+	const SCHEMA_VERSION = '1.1';
 
 	// hard cap for a single section payload, in bytes
 	const MAX_SECTION_BYTES = 262144;
@@ -45,12 +45,15 @@ class TI_Parrot_Agent_API {
 		}
 
 		$routes = array(
-			'/manifest'                       => 'get_manifest',
-			'/site'                           => 'get_site',
-			'/products'                       => 'get_products_index',
-			'/products/(?P<slug>[a-z0-9_-]+)' => 'get_product',
-			'/logs'                           => 'get_logs',
-			'/crashes'                        => 'get_crashes',
+			'/manifest'                            => 'get_manifest',
+			'/site'                                => 'get_site',
+			'/products'                            => 'get_products_index',
+			'/products/(?P<slug>[a-z0-9_-]+)'      => 'get_product',
+			'/logs'                                => 'get_logs',
+			'/crashes'                             => 'get_crashes',
+			'/integrity'                           => 'get_integrity_index',
+			'/integrity/(?P<slug>[a-z0-9_.-]+)'      => 'get_integrity_product',
+			'/integrity/(?P<slug>[a-z0-9_.-]+)/file' => 'get_integrity_file',
 		);
 		foreach ( $routes as $route => $callback ) {
 			register_rest_route(
@@ -117,6 +120,12 @@ class TI_Parrot_Agent_API {
 				'slug'  => 'crashes',
 				'label' => __( 'Product crash reports', 'pirate-parrot' ),
 				'route' => '/crashes',
+			),
+			array(
+				'slug'     => 'integrity',
+				'label'    => __( 'Product integrity', 'pirate-parrot' ),
+				'route'    => '/integrity',
+				'products' => wp_list_pluck( TI_Parrot_Integrity::detect(), 'slug' ),
 			),
 		);
 		foreach ( $this->get_product_sections() as $slug => $label ) {
@@ -345,6 +354,37 @@ class TI_Parrot_Agent_API {
 		}
 
 		return $this->respond( array( 'products' => $products ) );
+	}
+
+	function get_integrity_index( $request ) {
+		return $this->respond( TI_Parrot_Integrity::index() );
+	}
+
+	function get_integrity_product( $request ) {
+		$product = TI_Parrot_Integrity::find( $request['slug'], (string) $request->get_param( 'type' ) );
+		if ( null === $product ) {
+			return new WP_Error( 'pp_unknown_product', __( 'No ThemeIsle product with this slug is installed.', 'pirate-parrot' ), array( 'status' => 404 ) );
+		}
+
+		return $this->respond( TI_Parrot_Integrity::check( $product ) );
+	}
+
+	function get_integrity_file( $request ) {
+		$product = TI_Parrot_Integrity::find( $request['slug'], (string) $request->get_param( 'type' ) );
+		if ( null === $product ) {
+			return new WP_Error( 'pp_unknown_product', __( 'No ThemeIsle product with this slug is installed.', 'pirate-parrot' ), array( 'status' => 404 ) );
+		}
+		$result = TI_Parrot_Integrity::read_chunk(
+			$product,
+			$request->get_param( 'path' ),
+			(int) $request->get_param( 'offset' ),
+			(int) $request->get_param( 'length' )
+		);
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $this->respond( $result );
 	}
 
 	function respond( $data ) {
