@@ -96,8 +96,8 @@ class TI_Parrot_Integrity {
 	/**
 	 * All detected ThemeIsle products, each an array with keys:
 	 * slug, type (plugin|theme), version, active, path (relative, safe to
-	 * emit), sdk_version, wordpress_available and dir (absolute; internal,
-	 * stripped before output).
+	 * emit), wordpress_available and dir (absolute; internal, stripped
+	 * before output).
 	 *
 	 * @return array List of product arrays.
 	 */
@@ -145,25 +145,6 @@ class TI_Parrot_Integrity {
 	 */
 	public static function has_sdk( $dir ) {
 		return is_dir( $dir . '/' . self::SDK_DIR );
-	}
-
-	/**
-	 * SDK version parsed from load.php, '' when unknown.
-	 */
-	public static function sdk_version( $dir ) {
-		$load = $dir . '/' . self::SDK_DIR . '/load.php';
-		if ( ! is_file( $load ) || ! is_readable( $load ) ) {
-			return '';
-		}
-		$head = file_get_contents( $load, false, null, 0, 4096 );
-		if ( false === $head ) {
-			return '';
-		}
-		if ( preg_match( '/\$themeisle_sdk_version\s*=\s*[\'"]([^\'"]+)[\'"]/', $head, $matches ) ) {
-			return $matches[1];
-		}
-
-		return '';
 	}
 
 	/**
@@ -217,7 +198,6 @@ class TI_Parrot_Integrity {
 					'version'             => isset( $data['Version'] ) ? (string) $data['Version'] : '',
 					'active'              => is_plugin_active( $file ),
 					'path'                => $file,
-					'sdk_version'         => self::sdk_version( $dir ),
 					'wordpress_available' => self::is_wordpress_available( WP_PLUGIN_DIR . '/' . $file ),
 					'dir'                 => $dir,
 				)
@@ -246,7 +226,6 @@ class TI_Parrot_Integrity {
 					'version'             => (string) $theme->get( 'Version' ),
 					'active'              => $active,
 					'path'                => $stylesheet . '/style.css',
-					'sdk_version'         => self::sdk_version( $dir ),
 					'wordpress_available' => self::is_wordpress_available( $dir . '/style.css' ),
 					'dir'                 => $dir,
 				)
@@ -280,7 +259,6 @@ class TI_Parrot_Integrity {
 					'version'             => isset( $data['Version'] ) ? (string) $data['Version'] : '',
 					'active'              => true,
 					'path'                => basename( $dir ) . '/' . basename( $basefile ),
-					'sdk_version'         => self::sdk_version( $dir ),
 					'wordpress_available' => self::is_wordpress_available( $basefile ),
 					'dir'                 => $dir,
 				)
@@ -323,7 +301,6 @@ class TI_Parrot_Integrity {
 			'version'             => $product['version'],
 			'active'              => $product['active'],
 			'path'                => $product['path'],
-			'sdk_version'         => $product['sdk_version'],
 			'wordpress_available' => $product['wordpress_available'],
 			'route'               => $route,
 		);

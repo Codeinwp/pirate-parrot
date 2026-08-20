@@ -206,7 +206,6 @@ class Test_Integrity extends WP_UnitTestCase {
 			'version'             => $version,
 			'active'              => true,
 			'path'                => 'plugin' === $type ? $slug . '/' . $slug . '.php' : $slug . '/style.css',
-			'sdk_version'         => '3.3.44',
 			'wordpress_available' => $wp_available,
 			'dir'                 => $dir,
 		);
@@ -319,7 +318,6 @@ class Test_Integrity extends WP_UnitTestCase {
 		$this->assertSame( '9.9.9', $plugin['version'] );
 		$this->assertFalse( $plugin['active'] );
 		$this->assertSame( 'pp-fake-sdk/pp-fake-sdk.php', $plugin['path'] );
-		$this->assertSame( '3.3.48', $plugin['sdk_version'] );
 		$this->assertTrue( $plugin['wordpress_available'] );
 
 		$this->assertArrayHasKey( 'pp-fake-theme', $by_slug );
