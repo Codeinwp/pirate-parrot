@@ -451,6 +451,30 @@ class Test_Agent_Api extends WP_UnitTestCase {
 		$this->assertSame( 429, $response->get_status() );
 	}
 
+	public function test_each_request_is_counted_exactly_once() {
+		// WordPress calls permission callbacks twice per request; the
+		// counter must still move by one.
+		$this->request( '/manifest', $this->agent_token );
+		$this->assertSame( 1, (int) get_transient( 'ti_parrot_agent_rate' ) );
+		$this->request( '/site', $this->agent_token );
+		$this->assertSame( 2, (int) get_transient( 'ti_parrot_agent_rate' ) );
+		// unauthenticated attempts burn quota too (unchanged behaviour)
+		$this->request( '/site' );
+		$this->assertSame( 3, (int) get_transient( 'ti_parrot_agent_rate' ) );
+	}
+
+	public function test_requests_outside_the_namespace_are_not_counted() {
+		$request = new WP_REST_Request( 'GET', '/wp/v2/types' );
+		rest_do_request( $request );
+		$this->assertFalse( get_transient( 'ti_parrot_agent_rate' ) );
+	}
+
+	public function test_exactly_rate_limit_requests_are_allowed() {
+		set_transient( 'ti_parrot_agent_rate', TI_Parrot_Agent_API::RATE_LIMIT - 1, 3600 );
+		$this->assertSame( 200, $this->request( '/manifest', $this->agent_token )->get_status() );
+		$this->assertSame( 429, $this->request( '/manifest', $this->agent_token )->get_status() );
+	}
+
 	public function test_log_capture_active_during_grant_without_parrot_login() {
 		set_transient( 'ti_log_registered', array( 'MyPlugin' ) );
 		delete_transient( 'ti_log_allowed' );

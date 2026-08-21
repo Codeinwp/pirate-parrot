@@ -24,7 +24,7 @@ class TI_Parrot_Agent_API {
 	// hard cap for a single section payload, in bytes
 	const MAX_SECTION_BYTES = 262144;
 
-	const RATE_LIMIT = 30;
+	const RATE_LIMIT = 60;
 
 	const RATE_WINDOW = 3600;
 
@@ -36,6 +36,7 @@ class TI_Parrot_Agent_API {
 	function __construct( $parrot ) {
 		$this->parrot = $parrot;
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_filter( 'rest_pre_dispatch', array( $this, 'count_request' ), 10, 3 );
 	}
 
 	function register_routes() {
@@ -93,14 +94,27 @@ class TI_Parrot_Agent_API {
 		return $header ? trim( $header ) : '';
 	}
 
-	function is_rate_limited() {
-		$count = (int) get_transient( 'ti_parrot_agent_rate' );
-		if ( $count >= self::RATE_LIMIT ) {
-			return true;
+	/**
+	 * Rate accounting happens here, on `rest_pre_dispatch`, because WordPress
+	 * invokes a route's permission callback twice per request (once in
+	 * dispatch(), again in rest_send_allow_header()) — counting there
+	 * silently halved the advertised limit.
+	 */
+	function count_request( $result, $server, $request ) {
+		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) {
+			return $result;
 		}
+		if ( 0 !== strpos( $request->get_route(), '/' . self::REST_NAMESPACE . '/' ) ) {
+			return $result;
+		}
+		$count = (int) get_transient( 'ti_parrot_agent_rate' );
 		set_transient( 'ti_parrot_agent_rate', $count + 1, self::RATE_WINDOW );
 
-		return false;
+		return $result;
+	}
+
+	function is_rate_limited() {
+		return (int) get_transient( 'ti_parrot_agent_rate' ) > self::RATE_LIMIT;
 	}
 
 	function get_manifest( $request ) {
