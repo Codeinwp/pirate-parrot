@@ -141,8 +141,9 @@ class TI_Parrot {
 			'pirate-parrot',
 			'pp',
 			array(
-				'nonce'  => wp_create_nonce( 'parrot' ),
-				'copied' => __( 'Copied!', 'pirate-parrot' ),
+				'nonce'         => wp_create_nonce( 'parrot' ),
+				'copied'        => __( 'Copied!', 'pirate-parrot' ),
+				'generatedFrom' => __( 'Details generated from', 'pirate-parrot' ),
 			)
 		);
 
