@@ -55,6 +55,8 @@ class TI_Parrot_Agent_API {
 			'/integrity'                           => 'get_integrity_index',
 			'/integrity/(?P<slug>[a-z0-9_.-]+)'      => 'get_integrity_product',
 			'/integrity/(?P<slug>[a-z0-9_.-]+)/file' => 'get_integrity_file',
+			'/child-theme'                         => 'get_child_theme',
+			'/child-theme/file'                    => 'get_child_theme_file',
 		);
 		foreach ( $routes as $route => $callback ) {
 			register_rest_route(
@@ -142,6 +144,16 @@ class TI_Parrot_Agent_API {
 				'products' => wp_list_pluck( TI_Parrot_Integrity::detect(), 'slug' ),
 			),
 		);
+		$child = TI_Parrot_Child_Theme::detect();
+		if ( null !== $child ) {
+			$sections[] = array(
+				'slug'   => 'child-theme',
+				'label'  => __( 'Active child theme', 'pirate-parrot' ),
+				'route'  => '/child-theme',
+				'theme'  => $child['slug'],
+				'parent' => $child['parent_slug'],
+			);
+		}
 		foreach ( $this->get_product_sections() as $slug => $label ) {
 			$sections[] = array(
 				'slug'  => $slug,
@@ -390,6 +402,33 @@ class TI_Parrot_Agent_API {
 		}
 		$result = TI_Parrot_Integrity::read_chunk(
 			$product,
+			$request->get_param( 'path' ),
+			(int) $request->get_param( 'offset' ),
+			(int) $request->get_param( 'length' )
+		);
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $this->respond( $result );
+	}
+
+	function get_child_theme( $request ) {
+		$info = TI_Parrot_Child_Theme::detect();
+		if ( null === $info ) {
+			return new WP_Error( 'pp_no_child_theme', __( 'The active theme is not a child of a ThemeIsle theme.', 'pirate-parrot' ), array( 'status' => 404 ) );
+		}
+
+		return $this->respond( TI_Parrot_Child_Theme::report( $info ) );
+	}
+
+	function get_child_theme_file( $request ) {
+		$info = TI_Parrot_Child_Theme::detect();
+		if ( null === $info ) {
+			return new WP_Error( 'pp_no_child_theme', __( 'The active theme is not a child of a ThemeIsle theme.', 'pirate-parrot' ), array( 'status' => 404 ) );
+		}
+		$result = TI_Parrot_Child_Theme::read_chunk(
+			$info,
 			$request->get_param( 'path' ),
 			(int) $request->get_param( 'offset' ),
 			(int) $request->get_param( 'length' )
