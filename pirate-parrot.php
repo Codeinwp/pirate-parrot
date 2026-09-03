@@ -4,7 +4,7 @@
  * Plugin Name: Themeisle Support Parrot
  * Plugin URI: http://themeisle.com
  * Description: A Themeisle plugin that allows users to securely share WordPress access with developers for fast, efficient troubleshooting.
- * Version: 1.5.0
+ * Version: 1.6.0
  * Author: Themeisle
  * Author URI: http://themeisle.com
  * License: GPLv2 or later
@@ -650,6 +650,7 @@ class TI_Parrot {
 
 require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/product-settings.php';
 require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/integrity.php';
+require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/child-theme.php';
 require_once trailingslashit( plugin_dir_path( __FILE__ ) ) . 'inc/agent-api.php';
 
 $ti_parrot = new TI_Parrot();
